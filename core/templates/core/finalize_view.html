@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* MAGIC PRINT CSS: Forces full-width and high readability */
+    @media print {
+        .navbar, .d-print-none, .btn, .btn-group, .sidebar { display: none !important; }
+
+        @page {
+            size: auto;
+            margin: 8mm 10mm;
+        }
+
+        body {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .container, .container-fluid, .print-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .page-break {
+            display: block;
+            page-break-after: always;
+            width: 100% !important;
+            clear: both;
+        }
+
+        table { page-break-inside: auto; width: 100% !important; }
+        tr { page-break-inside: avoid; page-break-after: auto; }
+
+        .table thead th {
+            background-color: #f2f2f2 !important;
+            color: black !important;
+            border-bottom: 2px solid black !important;
+            font-size: 1rem;
+        }
+        .text-primary { color: #000 !important; }
+        .order-number-text { color: black !important; font-weight: 900; }
+    }
+
+    /* Screen Styles */
+    .print-container { background: white; padding: 15px; }
+    .table thead th {
+        background-color: #e9ecef !important;
+        color: black !important;
+        font-size: 0.95rem;
+    }
+    .closing-badge { color: #dc3545; font-weight: bold; border: 1px solid #dc3545; padding: 1px 4px; border-radius: 4px; }
+    .order-number-text { font-size: 1.1rem; color: #0d6efd; font-weight: 900; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 d-print-none">
+    <div>
+        <h2 class="fw-bold mb-0">Final Review & Print</h2>
+    </div>
+    <div class="btn-group">
+        <button onclick="window.print()" class="btn btn-dark btn-lg shadow-sm">
+            <i class="bi bi-printer me-2"></i>Print All Sheets
+        </button>
+        <a href="{% url 'export_run_sheet_excel' %}" class="btn btn-success btn-lg shadow-sm">
+            <i class="bi bi-file-earmark-excel me-2"></i>Excel
+        </a>
+    </div>
+</div>
+
+<div class="print-container">
+    {% for region, data in grouped_orders.items %}
+
+    <div class="page-break">
+        <div class="row align-items-center border-bottom border-4 border-dark pb-2 mb-3 mx-0">
+            <div class="col-7 px-0">
+                <h2 class="fw-bold mb-0 text-uppercase" style="letter-spacing: -1px;">{{ region }} TRUCK</h2>
+                <div class="text-muted fw-bold">{{ shipping_date|date:"l, F d, Y" }}</div>
+                {% if data.orders.0.driver_name %}
+                    <div class="fw-bold text-dark mt-1">DRIVER: {{ data.orders.0.driver_name|upper }}</div>
+                {% endif %}
+            </div>
+            <div class="col-5 text-end px-0">
+                <div class="border border-3 border-dark p-3 bg-light d-inline-block text-start shadow-sm" style="min-width: 250px;">
+                    <div class="fw-bold mb-2 text-dark border-bottom border-2 border-dark pb-1" style="font-size: 1.2rem;">
+                        Total Weight: <span class="text-primary">{{ data.totals.weight }}</span> lbs
+                    </div>
+
+                    {% if data.totals.skids > 0 %}
+                        <div class="fw-bold mb-1 text-dark fs-5">Total Skids: {{ data.totals.skids }}</div>
+                    {% endif %}
+
+                    {% if data.totals.bundles > 0 %}
+                        <div class="fw-bold mb-1 text-dark fs-5">Total Bundles: {{ data.totals.bundles }}</div>
+                    {% endif %}
+
+                    {% if data.totals.coils > 0 %}
+                        <div class="fw-bold mb-0 text-dark fs-5">Total Coils: {{ data.totals.coils }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <table class="table table-bordered align-middle table-sm border-dark">
+            <thead>
+                <tr>
+                    <th>Customer Name</th>
+                    <th style="width: 150px;">Order #</th>
+                    <th>City</th>
+                    <th class="text-center" style="width: 100px;">Weight</th>
+                    <th class="text-center" style="width: 80px;">Skids</th>
+                    <th class="text-center" style="width: 80px;">Bundles</th>
+                    <th class="text-center" style="width: 80px;">Coils</th>
+                    <th class="text-center" style="width: 100px;">Closing</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in data.orders %}
+                <tr>
+                    <td class="fw-bold text-dark" style="font-size: 1.2rem;">{{ o.customer_name }}</td>
+                    <td class="order-number-text">{{ o.order_number }}</td>
+                    <td class="text-dark small">{{ o.city }}</td>
+                    <td class="text-center fw-bold fs-5">{{ o.weight }}</td>
+                    <td class="text-center fw-bold fs-5">{% if o.skids > 0 %}{{ o.skids }}{% else %}-{% endif %}</td>
+                    <td class="text-center fw-bold fs-5">{% if o.bundles > 0 %}{{ o.bundles }}{% else %}-{% endif %}</td>
+                    <td class="text-center fw-bold fs-5">{% if o.coils > 0 %}{{ o.coils }}{% else %}-{% endif %}</td>
+                    <td class="text-center">
+                        {% if o.closing_time %}<span class="closing-badge">{{ o.closing_time }}</span>{% else %}--{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% endfor %}
+</div>
+{% endblock %}

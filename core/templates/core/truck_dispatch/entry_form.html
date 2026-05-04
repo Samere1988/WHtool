@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Styling for the picker buttons */
+    .picker-btn-group .btn-check:checked + .btn { box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .bar-group .btn-check:checked + .btn { background-color: #0d6efd !important; color: white !important; border-color: #0d6efd !important; }
+    .sheet-group .btn-check:checked + .btn { background-color: #198754 !important; color: white !important; border-color: #198754 !important; }
+    .cov-group .btn-check:checked + .btn { background-color: #ffc107 !important; color: black !important; border-color: #ffc107 !important; }
+    .picker-btn { flex: 1 1 45%; font-size: 0.85rem; margin-bottom: 2px; transition: all 0.2s; }
+    .scrollable-pickers { max-height: 180px; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
+    .scrollable-pickers::-webkit-scrollbar { width: 6px; }
+    .scrollable-pickers::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 4px; }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow border-0">
+            <div class="card-header {% if order %}bg-warning text-dark{% else %}bg-primary text-white{% endif %} py-3">
+                <h4 class="mb-0 fw-bold">
+                    {% if order %}
+                        <i class="bi bi-pencil-square me-2"></i>Edit Delivery: {{ customer.customer_name }}
+                    {% else %}
+                        <i class="bi bi-plus-circle me-2"></i>New Delivery: {{ customer.customer_name }}
+                    {% endif %}
+                </h4>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="post" id="deliveryForm">
+                    {% csrf_token %}
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Order Number</label>
+                            <input type="text" name="order_number" class="form-control form-control-lg" value="{{ order.order_number|default:'W' }}" required>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-bold mb-3 border-bottom pb-2">Preparation Tracking</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="card h-100 shadow-sm border-primary">
+                                <div class="card-header bg-primary text-white fw-bold py-2">Bar Station</div>
+                                <div class="card-body bg-light p-3">
+                                    <label class="form-label fw-bold small text-muted">BAR LINE ITEMS</label>
+                                    <input type="number" name="bar_lines" class="form-control mb-3" min="0" placeholder="0" value="{{ archive.bar_lines|default_if_none:'' }}">
+                                    <label class="form-label fw-bold small text-muted">PREPARED BY</label>
+                                    <div class="d-flex flex-wrap gap-1 picker-btn-group bar-group scrollable-pickers bg-white border rounded p-2">
+                                        {% for name in bar_employees %}
+                                        <input type="checkbox" class="btn-check picker-checkbox" name="bar_prep" id="bar-btn-{{ forloop.counter }}" value="{{ name }}" autocomplete="off" {% if name in saved_bar %}checked{% endif %}>
+                                        <label class="btn btn-outline-primary picker-btn fw-bold" for="bar-btn-{{ forloop.counter }}">{{ name }}</label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100 shadow-sm border-success">
+                                <div class="card-header bg-success text-white fw-bold py-2">Sheet Station</div>
+                                <div class="card-body bg-light p-3">
+                                    <label class="form-label fw-bold small text-muted">SHEET LINE ITEMS</label>
+                                    <input type="number" name="sheet_lines" class="form-control mb-3" min="0" placeholder="0" value="{{ archive.sheet_lines|default_if_none:'' }}">
+                                    <label class="form-label fw-bold small text-muted">PREPARED BY</label>
+                                    <div class="d-flex flex-wrap gap-1 picker-btn-group sheet-group scrollable-pickers bg-white border rounded p-2">
+                                        {% for name in sheet_employees %}
+                                        <input type="checkbox" class="btn-check picker-checkbox" name="sheet_prep" id="sheet-btn-{{ forloop.counter }}" value="{{ name }}" autocomplete="off" {% if name in saved_sheet %}checked{% endif %}>
+                                        <label class="btn btn-outline-success picker-btn fw-bold" for="sheet-btn-{{ forloop.counter }}">{{ name }}</label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100 shadow-sm border-warning">
+                                <div class="card-header bg-warning text-dark fw-bold py-2">Covering Station</div>
+                                <div class="card-body bg-light p-3">
+                                    <label class="form-label fw-bold small text-muted">COVERING LINE ITEMS</label>
+                                    <input type="number" name="covering_lines" class="form-control mb-3" min="0" placeholder="0" value="{{ archive.covering_lines|default_if_none:'' }}">
+                                    <label class="form-label fw-bold small text-muted">PREPARED BY</label>
+                                    <div class="d-flex flex-wrap gap-1 picker-btn-group cov-group scrollable-pickers bg-white border rounded p-2">
+                                        {% for name in cov_employees %}
+                                        <input type="checkbox" class="btn-check picker-checkbox" name="covering_prep" id="cov-btn-{{ forloop.counter }}" value="{{ name }}" autocomplete="off" {% if name in saved_cov %}checked{% endif %}>
+                                        <label class="btn btn-outline-warning text-dark picker-btn fw-bold" for="cov-btn-{{ forloop.counter }}">{{ name }}</label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h5 class="fw-bold mb-3">Load Totals</h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Weight (lbs)</label>
+                            <input type="number" name="weight" class="form-control" min="0" placeholder="0" value="{{ order.weight|default_if_none:'' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Skids</label>
+                            <input type="number" name="skids" class="form-control" min="0" placeholder="0" value="{{ order.skids|default_if_none:'' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Bundles</label>
+                            <input type="number" name="bundles" class="form-control" min="0" placeholder="0" value="{{ order.bundles|default_if_none:'' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Coils</label>
+                            <input type="number" name="coils" class="form-control" min="0" placeholder="0" value="{{ order.coils|default_if_none:'' }}">
+                        </div>
+                    </div>
+
+                    <div class="mt-5 d-flex gap-3">
+                        <button type="submit" class="btn btn-success btn-lg flex-grow-1 fw-bold">SAVE & ADD</button>
+                        <a href="{% url 'run_sheet' %}" class="btn btn-outline-secondary btn-lg fw-bold">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

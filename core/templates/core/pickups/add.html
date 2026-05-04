@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow border-0">
+            <div class="card-header text-white py-3" style="background-color: #6610f2;">
+                <h4 class="mb-0 fw-bold"><i class="bi bi-camera-fill me-2"></i>Add New Pickup Photos</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Customer Name</label>
+                        <input type="text" name="customer_name" class="form-control" placeholder="Required" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Order Number</label>
+                        <input type="text" name="order_number" class="form-control" placeholder="Optional">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-primary">Capture / Select Photos</label>
+                        <input type="file" name="photos" class="form-control form-control-lg" accept="image/*" multiple required>
+                        <small class="text-muted">You can select multiple photos at once.</small>
+                    </div>
+                    <button type="submit" class="btn btn-indigo btn-lg w-100 text-white fw-bold shadow-sm" style="background-color: #6610f2;">
+                        UPLOAD PHOTOS
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

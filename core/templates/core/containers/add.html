@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow border-0">
+            <div class="card-header bg-primary text-white py-3">
+                <h4 class="mb-0 fw-bold"><i class="bi bi-camera-fill me-2"></i>Log Container Photos</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Container Number</label>
+                        <input type="text"
+                               name="container_number"
+                               class="form-control form-control-lg"
+                               placeholder="e.g. MSKU-1234567"
+                               value="{{ prefill_num }}"
+                               required>
+                        <small class="text-muted">If the container exists, photos will be added to its gallery.</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Upload Inspection Photos</label>
+                        <input class="form-control form-control-lg"
+                               type="file"
+                               name="photos"
+                               accept="image/*"
+                               multiple
+                               required>
+                        <small class="text-muted">You can select multiple photos at once from your phone.</small>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-success btn-lg flex-grow-1 fw-bold shadow-sm">
+                            <i class="bi bi-cloud-arrow-up-fill me-2"></i>Upload Photos
+                        </button>
+
+                        {% if prefill_num %}
+                            <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                        {% else %}
+                            <a href="{% url 'container_list' %}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

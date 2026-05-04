@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .img-container { position: relative; }
+
+    .img-thumbnail-custom {
+        height: 250px;
+        object-fit: cover;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    .img-thumbnail-custom:hover {
+        transform: scale(1.02);
+    }
+
+    .delete-photo-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        padding: 5px 8px;
+        color: #dc3545;
+        border: none;
+        transition: all 0.2s;
+    }
+    .delete-photo-btn:hover {
+        background: #dc3545;
+        color: white;
+    }
+
+    .modal-xl { max-width: 95vw; }
+
+    /* PC-Optimized Modal Styles */
+    #photoModal .modal-body {
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: auto;
+        min-height: 85vh;
+        max-height: calc(100vh - 120px);
+        background-color: #000;
+    }
+
+    .full-res-img {
+        width: var(--modal-zoom-width, 100%);
+        max-width: none !important;
+        height: auto;
+        flex-shrink: 0; /* Prevents Windows browsers from capping at 100% */
+        transition: width 0.1s ease-out;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{% url 'outbound_list' %}" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="bi bi-arrow-left"></i> Back to Outbound Loads
+        </a>
+        <h2 class="fw-bold"><i class="bi bi-truck me-2"></i>{{ load.truck_name }}</h2>
+        <p class="text-muted">Loaded on {{ load.date_loaded|date:"F j, Y" }}</p>
+    </div>
+
+    <div class="d-flex gap-2">
+        <form action="{% url 'delete_outbound_load' load.pk %}" method="POST" onsubmit="return confirm('WARNING: This will permanently delete this truck load and ALL associated photos. Proceed?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger shadow-sm">
+                <i class="bi bi-trash3-fill me-1"></i>Delete Load
+            </button>
+        </form>
+
+        <form action="{% url 'upload_more_outbound_photos' load.pk %}" method="post" enctype="multipart/form-data" id="quickUploadForm" class="d-inline">
+            {% csrf_token %}
+            <input type="file" name="photos" id="fileInput" multiple accept="image/*" style="display: none;" onchange="document.getElementById('quickUploadForm').submit();">
+            <button type="button" class="btn btn-primary shadow-sm fw-bold" onclick="document.getElementById('fileInput').click();">
+                <i class="bi bi-plus-lg me-1"></i>Add More Photos
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+    {% for photo in load.photos.all %}
+    <div class="col">
+        <div class="card shadow-sm border-0 img-container">
+            <form action="{% url 'delete_outbound_photo' photo.pk %}" method="POST" onsubmit="return confirm('Delete this photo permanently?');">
+                {% csrf_token %}
+                <button type="submit" class="delete-photo-btn">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
+
+            <img src="{{ photo.image.url }}"
+                 class="card-img-top img-thumbnail-custom"
+                 data-bs-toggle="modal"
+                 data-bs-target="#photoModal"
+                 onclick="updateModal('{{ photo.image.url }}')">
+
+            <div class="card-footer bg-white border-0 text-center small text-muted">
+                {{ photo.uploaded_at|time:"g:i A" }}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center text-muted py-5">
+        <i class="bi bi-camera-video-off display-4 d-block mb-3"></i>
+        <p>No photos found for this load.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark border-0 shadow">
+
+            <div class="modal-header border-0 bg-dark py-2">
+                <div class="d-flex align-items-center gap-2 border-end pe-3">
+                    <i class="bi bi-zoom-out text-white-50"></i>
+                    <input type="range" class="form-range" id="modalZoomSlider" min="10" max="250" value="100" style="width: 250px; accent-color: #ffffff;">
+                    <i class="bi bi-zoom-in text-white-50"></i>
+                </div>
+                <span class="text-white ms-3 fw-bold" id="zoomValue">100%</span>
+
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <img src="" id="modalImg" class="full-res-img">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const photoModal = document.getElementById('photoModal');
+    const modalImg = document.getElementById('modalImg');
+    const zoomSlider = document.getElementById('modalZoomSlider');
+    const zoomValueDisplay = document.getElementById('zoomValue');
+
+    function updateModal(imageUrl) {
+        if (!modalImg) return;
+        modalImg.src = imageUrl;
+        resetModalZoom();
+    }
+
+    function resetModalZoom() {
+        if (!zoomSlider) return;
+        photoModal.style.setProperty('--modal-zoom-width', '100%');
+        zoomSlider.value = 100;
+        zoomValueDisplay.textContent = '100%';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!zoomSlider) return;
+
+        zoomSlider.addEventListener('input', function() {
+            const val = this.value;
+            photoModal.style.setProperty('--modal-zoom-width', val + '%');
+            zoomValueDisplay.textContent = val + '%';
+        });
+
+        photoModal.addEventListener('hidden.bs.modal', function() {
+            resetModalZoom();
+        });
+    });
+</script>
+{% endblock %}

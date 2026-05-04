@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow border-0">
+            <div class="card-header bg-success text-white py-3">
+                <h4 class="mb-0 fw-bold">{{ title }}</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Vendor Name</label>
+                            <input type="text" name="name" class="form-control" value="{{ vendor.name|default:'' }}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Street Address</label>
+                            <input type="text" name="address" class="form-control" value="{{ vendor.address|default:'' }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">City</label>
+                            <input type="text" name="city" class="form-control" value="{{ vendor.city|default:'' }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Postal Code</label>
+                            <input type="text" name="postal_code" class="form-control" value="{{ vendor.postal_code|default:'' }}">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Region</label>
+                            <select name="region" class="form-select border-success" required>
+                                <option value="">-- Select Truck Region --</option>
+                                {% for r in regions %}
+                                <option value="{{ r }}" {% if vendor.region == r %}selected{% endif %}>{{ r }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4 d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg fw-bold shadow-sm">SAVE VENDOR</button>
+                        <a href="{% url 'manage_vendors' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="fw-bold mb-4 text-warning"><i class="bi bi-arrow-left-right me-2"></i>Select Customer for Return</h2>
+<input type="text" id="customerSearch" class="form-control mb-4 shadow-sm border-warning" placeholder="Search Customer Name, City, or Code...">
+
+<div class="card shadow-sm border-0">
+    <table class="table table-hover align-middle mb-0" id="customerTable">
+        <thead class="table-warning">
+            <tr>
+                <th>Code</th>
+                <th>Customer Name</th>
+                <th>City</th>
+                <th class="text-end">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in customers %}
+            <tr>
+                <td><code>{{ c.customer_id }}</code></td>
+                <td class="fw-bold">{{ c.customer_name }}</td>
+                <td>{{ c.city }}</td>
+                <td class="text-end">
+                    <a href="{% url 'add_return_form' c.customer_id %}" class="btn btn-warning btn-sm fw-bold">
+                        SELECT <i class="bi bi-chevron-right ms-1"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    document.getElementById('customerSearch').addEventListener('keyup', function() {
+        let filter = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#customerTable tbody tr');
+        rows.forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}

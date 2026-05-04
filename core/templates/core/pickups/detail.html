@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .img-container { position: relative; }
+    .img-thumbnail-custom {
+        height: 250px;
+        object-fit: cover;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    .img-thumbnail-custom:hover { transform: scale(1.02); }
+
+    .delete-photo-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        padding: 5px 8px;
+        color: #dc3545;
+        border: none;
+        transition: all 0.2s;
+    }
+    .delete-photo-btn:hover { background: #dc3545; color: white; }
+
+    .modal-xl { max-width: 95vw; }
+    #photoModal { --modal-zoom-width: 100%; }
+    #photoModal .modal-body {
+        padding: 0; text-align: center; overflow: auto;
+        max-height: calc(100vh - 120px);
+    }
+    .full-res-img {
+        width: var(--modal-zoom-width);
+        max-width: none !important;
+        height: auto;
+        transition: width 0.1s ease-out;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{% url 'pickup_photo_list' %}" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="bi bi-arrow-left"></i> Back to Pickup Folders
+        </a>
+        <h2 class="fw-bold" style="color: #6610f2;"><i class="bi bi-person-badge me-2"></i>{{ log.customer_name }}</h2>
+        <p class="text-muted">Order: {{ log.order_number }} • Logged on {{ log.date_picked_up|date:"F j, Y" }}</p>
+    </div>
+
+    <div class="d-flex gap-2">
+        <form action="{% url 'delete_pickup_photo_log' log.pk %}" method="POST" onsubmit="return confirm('WARNING: Delete this folder and ALL photos?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger shadow-sm">
+                <i class="bi bi-trash3-fill me-1"></i>Delete Folder
+            </button>
+        </form>
+
+        <form action="{% url 'upload_more_pickup_photos' log.pk %}" method="post" enctype="multipart/form-data" id="quickUploadForm" class="d-inline">
+            {% csrf_token %}
+            <input type="file" name="photos" id="fileInput" multiple accept="image/*" style="display: none;" onchange="document.getElementById('quickUploadForm').submit();">
+            <button type="button" class="btn text-white shadow-sm fw-bold" style="background-color: #6610f2;" onclick="document.getElementById('fileInput').click();">
+                <i class="bi bi-plus-lg me-1"></i>Add More Photos
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+    {% for photo in log.photos.all %}
+    <div class="col">
+        <div class="card shadow-sm border-0 img-container">
+            <form action="{% url 'delete_pickup_individual_photo' photo.pk %}" method="POST" onsubmit="return confirm('Delete this photo permanently?');">
+                {% csrf_token %}
+                <button type="submit" class="delete-photo-btn"><i class="bi bi-trash"></i></button>
+            </form>
+
+            <img src="{{ photo.image.url }}" class="card-img-top img-thumbnail-custom" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="updateModal('{{ photo.image.url }}')">
+            <div class="card-footer bg-white border-0 text-center small text-muted">{{ photo.uploaded_at|time:"g:i A" }}</div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center text-muted py-5">
+        <i class="bi bi-camera-video-off display-4 d-block mb-3"></i>
+        <p>No photos found for this pickup.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark border-0 shadow">
+            <div class="modal-header border-0 bg-dark py-2">
+                <div class="d-flex align-items-center gap-2 border-end pe-3">
+                    <i class="bi bi-zoom-out text-white-50"></i>
+                    <input type="range" class="form-range" id="modalZoomSlider" min="10" max="250" value="100" style="width: 250px; accent-color: #ffffff;">
+                    <i class="bi bi-zoom-in text-white-50"></i>
+                </div>
+                <span class="text-white ms-3 fw-bold" id="zoomValue">100%</span>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0 d-flex align-items-center justify-content-center" style="overflow: auto; min-height: 85vh; max-height: calc(100vh - 120px); background-color: #000;">
+                <img src="" id="modalImg" class="full-res-img">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const photoModal = document.getElementById('photoModal');
+    const modalImg = document.getElementById('modalImg');
+    const zoomSlider = document.getElementById('modalZoomSlider');
+    const zoomValueDisplay = document.getElementById('zoomValue');
+
+    function updateModal(imageUrl) { if (modalImg) { modalImg.src = imageUrl; resetModalZoom(); } }
+    function resetModalZoom() { if (zoomSlider) { photoModal.style.setProperty('--modal-zoom-width', '100%'); zoomSlider.value = 100; zoomValueDisplay.textContent = '100%'; } }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!zoomSlider) return;
+        zoomSlider.addEventListener('input', function() {
+            photoModal.style.setProperty('--modal-zoom-width', this.value + '%');
+            zoomValueDisplay.textContent = this.value + '%';
+        });
+        photoModal.addEventListener('hidden.bs.modal', resetModalZoom);
+    });
+</script>
+{% endblock %}

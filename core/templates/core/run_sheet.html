@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block container_type %}container-fluid px-4{% endblock %}
+
+{% block content %}
+<style>
+    /* 1. Full-Width Layout */
+    .truck-card {
+        width: 100%;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+        margin-bottom: 1rem;
+    }
+
+    .table-container { flex-grow: 1; overflow-y: auto; max-height: 600px; }
+
+    /* 2. Text Sizing for Dashboard Visibility */
+    .customer-name-text {
+        font-size: 1.4rem !important;
+        font-weight: 800;
+        color: #1a1d20;
+        display: block;
+    }
+
+    .city-text {
+        font-size: 1rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .order-num-text {
+        font-size: 1.5rem;
+        font-weight: 800;
+    }
+
+    /* 3. The New Load Details Styling */
+    .load-text {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #0d2c54;
+    }
+
+    .table th {
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        background-color: #f1f3f5;
+        padding: 1rem;
+    }
+
+    .table td { padding: 1.25rem 1rem; }
+
+    .truck-header-text { font-size: 1.8rem; font-weight: 800; }
+    .region-weight-badge { font-size: 1.2rem; padding: 0.5rem 1.3rem; }
+
+    .sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 3px solid #dee2e6;
+    }
+
+    /* 4. Color coding for Returns and Pickups */
+    .row-return { background-color: rgba(255, 193, 7, 0.1) !important; border-left: 5px solid #ffc107; }
+    .row-pickup { background-color: rgba(25, 135, 84, 0.1) !important; border-left: 5px solid #198754; }
+
+    .type-badge { font-size: 0.75rem; vertical-align: middle; margin-bottom: 4px; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-2">
+    <div>
+        <h2 class="fw-bold text-dark mb-0"><i class="bi bi-truck-flatbed me-2"></i>Dispatch Overview</h2>
+        <p class="text-muted small mb-0">Managing Deliveries, Returns, and Pickups</p>
+    </div>
+
+    <div class="d-flex gap-2">
+        <div class="btn-group shadow-sm">
+            <a href="{% url 'add_to_run_sheet' %}" class="btn btn-primary fw-bold px-3">
+                <i class="bi bi-plus-circle me-1"></i> ORDER
+            </a>
+            <a href="{% url 'add_return' %}" class="btn btn-warning fw-bold px-3">
+                <i class="bi bi-arrow-left-right me-1"></i> RETURN
+            </a>
+            <a href="{% url 'add_pickup' %}" class="btn btn-success fw-bold px-3 text-white">
+                <i class="bi bi-arrow-down-circle me-1"></i> PICKUP
+            </a>
+        </div>
+
+        <a href="{% url 'finalize_run_sheet' %}" class="btn btn-secondary shadow-sm px-3">
+            <i class="bi bi-printer me-1"></i> PRINT
+        </a>
+        <button type="button" class="btn btn-outline-success fw-bold shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#commitModal">
+            COMMIT DAY
+        </button>
+    </div>
+</div>
+
+<div class="row row-cols-1 row-cols-xl-2 g-4">
+    {% for region, data in grouped_orders.items %}
+    <div class="col">
+        <div class="card truck-card overflow-hidden">
+            <div class="card-header bg-dark text-white py-3 px-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="truck-header-text">{{ region|upper }}</span>
+                    <span class="badge bg-primary region-weight-badge shadow-sm">{{ data.totals.weight }} LBS</span>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="sticky-header">
+                        <tr class="text-muted">
+                            <th class="ps-4" style="width: 40%;">Customer / Vendor</th>
+                            <th style="width: 15%;"># Ref</th>
+                            <th class="text-center" style="width: 10%;">Weight</th>
+                            <th class="text-center" style="width: 25%;">Load Details</th>
+                            <th class="text-center" style="width: 10%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for o in data.orders %}
+                        <tr class="{% if o.is_return %}row-return{% elif o.is_pickup %}row-pickup{% endif %}">
+                            <td class="ps-4">
+                                {% if o.is_return %}
+                                    <span class="badge bg-warning text-dark type-badge">RETURN</span>
+                                {% elif o.is_pickup %}
+                                    <span class="badge bg-success text-white type-badge">PICKUP</span>
+                                {% endif %}
+                                <span class="customer-name-text">{{ o.customer_name }}</span>
+                                <span class="city-text"><i class="bi bi-geo-alt me-1"></i>{{ o.city }}</span>
+                            </td>
+                            <td>
+                                <span class="order-num-text {% if o.is_return %}text-warning{% elif o.is_pickup %}text-success{% else %}text-primary{% endif %}">
+                                    {{ o.order_number }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="fw-bold fs-5">{{ o.weight }}</span>
+                            </td>
+                            <td class="text-center">
+                                <div class="load-text">
+                                    {% if o.skids > 0 %}
+                                        {{ o.skids }} skid{{ o.skids|pluralize }}{% if o.bundles > 0 or o.coils > 0 %}, {% endif %}
+                                    {% endif %}
+
+                                    {% if o.bundles > 0 %}
+                                        {{ o.bundles }} bundle{{ o.bundles|pluralize }}{% if o.coils > 0 %}, {% endif %}
+                                    {% endif %}
+
+                                    {% if o.coils > 0 %}
+                                        {{ o.coils }} coil{{ o.coils|pluralize }}
+                                    {% endif %}
+
+                                    {% if o.skids == 0 and o.bundles == 0 and o.coils == 0 %}
+                                        <span class="text-muted fw-normal fs-6">
+                                            {% if o.is_pickup or o.is_return %}N/A{% else %}No units entered{% endif %}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group">
+                                    <a href="{% url 'edit_order' o.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                                    <a href="{% url 'delete_stop' o.pk %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this stop?')"><i class="bi bi-trash"></i></a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card-footer bg-light d-flex justify-content-around py-3 border-top">
+                <span class="fw-bold text-primary">{{ data.totals.weight }} Lbs Total</span>
+                <span class="fw-bold text-dark">{{ data.totals.skids }} Skids</span>
+                <span class="fw-bold text-dark">{{ data.totals.bundles }} Bundles</span>
+                <span class="fw-bold text-dark">{{ data.totals.coils }} Coils</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="modal fade" id="commitModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-success text-white py-3">
+                <h5 class="modal-title fw-bold">Commit & Clear Day</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <p class="fs-5">Save stats and clear the board?</p>
+                <small class="text-muted">This will move all current stops to history.</small>
+            </div>
+            <div class="modal-footer justify-content-center border-0 pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                <form action="{% url 'commit_and_clear_day' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success fw-bold px-4">Commit & Archive</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

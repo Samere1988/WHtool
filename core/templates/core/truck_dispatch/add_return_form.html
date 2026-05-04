@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow border-0">
+            <div class="card-header bg-warning text-dark py-3">
+                <h4 class="mb-0 fw-bold"><i class="bi bi-arrow-left-right me-2"></i>Return Details: {{ customer.customer_name }}</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Return Number (RA)</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-warning border-warning fw-bold text-dark">K</span>
+                                <input type="text" name="return_number" class="form-control border-warning" placeholder="12345" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-bold mb-3 border-bottom pb-2">Return Load Totals</h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Weight (lbs)</label>
+                            <input type="number" name="weight" class="form-control" min="0" placeholder="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Skids</label>
+                            <input type="number" name="skids" class="form-control" min="0" placeholder="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Bundles</label>
+                            <input type="number" name="bundles" class="form-control" min="0" placeholder="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Coils</label>
+                            <input type="number" name="coils" class="form-control" min="0" placeholder="0">
+                        </div>
+                    </div>
+
+                    <div class="mt-5 d-flex gap-3">
+                        <button type="submit" class="btn btn-warning btn-lg flex-grow-1 fw-bold">ADD RETURN</button>
+                        <a href="{% url 'run_sheet' %}" class="btn btn-outline-secondary btn-lg fw-bold">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

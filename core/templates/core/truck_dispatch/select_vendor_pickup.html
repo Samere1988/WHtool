@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="fw-bold mb-4 text-success"><i class="bi bi-shop me-2"></i>Select Vendor for Pickup</h2>
+<input type="text" id="vendorSearch" class="form-control mb-4 shadow-sm border-success" placeholder="Search Vendor Name, City, or Region...">
+
+<div class="card shadow-sm border-0">
+    <table class="table table-hover align-middle mb-0" id="vendorTable">
+        <thead class="table-success">
+            <tr>
+                <th>Vendor Name</th>
+                <th>City</th>
+                <th>Default Region</th>
+                <th class="text-end">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in vendors %}
+            <tr>
+                <td class="fw-bold">{{ v.name }}</td>
+                <td>{{ v.city }}</td>
+                <td><span class="badge bg-secondary">{{ v.region }}</span></td>
+                <td class="text-end">
+                    <a href="{% url 'add_pickup_form' v.pk %}" class="btn btn-success btn-sm fw-bold">
+                        SELECT <i class="bi bi-chevron-right ms-1"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    document.getElementById('vendorSearch').addEventListener('keyup', function() {
+        let filter = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#vendorTable tbody tr');
+        rows.forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}

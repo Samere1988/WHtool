@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow border-0">
+            <div class="card-header bg-warning text-dark py-3">
+                <h4 class="mb-0 fw-bold">
+                    <i class="bi bi-arrow-left-right me-2"></i>New Return Stop
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-muted small">SELECT CUSTOMER</label>
+                        <select name="customer_id" class="form-select form-select-lg border-warning shadow-sm" required>
+                            <option value="">-- Choose Customer --</option>
+                            {% for c in customers %}
+                            <option value="{{ c.customer_id }}">{{ c.customer_name }} — {{ c.city }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-muted small">RETURN NUMBER (RA)</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text bg-warning border-warning fw-bold">K</span>
+                            <input type="text" name="return_number" class="form-control border-warning" placeholder="12345" required>
+                        </div>
+                        <div class="form-text text-muted">The "K" will be added automatically if you forget it.</div>
+                    </div>
+
+                    <div class="d-grid gap-2 pt-2">
+                        <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-sm">
+                            ADD RETURN TO RUN SHEET
+                        </button>
+                        <a href="{% url 'run_sheet' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
