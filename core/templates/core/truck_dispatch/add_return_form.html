@@ -1,53 +1,184 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    .customer-info-card {
+        border-left: 5px solid #ffc107;
+        background: #fffaf0;
+    }
+
+    .customer-info-card .form-control,
+    .customer-info-card .form-select {
+        font-weight: 600;
+    }
+
+    .section-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #212529;
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+</style>
+
 <div class="row justify-content-center">
-    <div class="col-md-8">
+    <div class="col-md-10">
         <div class="card shadow border-0">
             <div class="card-header bg-warning text-dark py-3">
-                <h4 class="mb-0 fw-bold"><i class="bi bi-arrow-left-right me-2"></i>Return Details: {{ customer.customer_name }}</h4>
+                <h4 class="mb-0 fw-bold">
+                    <i class="bi bi-arrow-left-right me-2"></i>
+                    New Return Pickup: {{ customer.customer_name }}
+                </h4>
             </div>
-            <div class="card-body p-4">
-                <form method="post">
-                    {% csrf_token %}
 
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Return Number (RA)</label>
-                            <div class="input-group input-group-lg">
-                                <span class="input-group-text bg-warning border-warning fw-bold text-dark">K</span>
-                                <input type="text" name="return_number" class="form-control border-warning" placeholder="12345" required>
+            <div class="card-body p-4">
+                <form method="post" id="returnForm">
+                    {% csrf_token %}
+                    <input type="hidden"
+                       name="shipping_date"
+                       value="{{ selected_shipping_date|date:'Y-m-d' }}">
+
+                    <div class="card customer-info-card shadow-sm border-0 mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="fw-bold mb-1">
+                                        <i class="bi bi-person-vcard me-2"></i>Customer / Pickup Information
+                                    </h5>
+                                    <p class="text-muted small mb-0">
+                                        Changes here apply only to this return pickup. They will not update the customer database.
+                                    </p>
+                                </div>
+                                <span class="badge bg-warning text-dark">{{ customer.customer_id }}</span>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Customer Name</label>
+                                    <input type="text"
+                                           class="form-control form-control-lg"
+                                           value="{{ customer.customer_name }}"
+                                           readonly>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Address</label>
+                                    <input type="text"
+                                           name="address"
+                                           class="form-control form-control-lg"
+                                           value="{{ customer.address }}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">City</label>
+                                    <input type="text"
+                                           name="city"
+                                           class="form-control"
+                                           value="{{ customer.city }}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Postal Code</label>
+                                    <input type="text"
+                                           name="postal_code"
+                                           class="form-control text-uppercase"
+                                           value="{{ customer.postal_code }}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Region / Truck</label>
+                                    <select name="region" class="form-select">
+                                        {% for region in regions %}
+                                            <option value="{{ region }}"
+                                                {% if customer.region == region %}selected{% endif %}
+                                            >
+                                                {{ region }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <h5 class="fw-bold mb-3 border-bottom pb-2">Return Load Totals</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Return Number</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-warning border-warning fw-bold text-dark">K</span>
+                                <input type="text"
+                                       name="return_number"
+                                       class="form-control border-warning"
+                                       placeholder="12345"
+                                       required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Closing Time</label>
+                            <input type="text"
+                                   name="closing_time"
+                                   class="form-control form-control-lg"
+                                   placeholder="Example: 3:00 PM">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h5 class="section-title">Pickup Load Details</h5>
+
                     <div class="row g-3">
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Weight (lbs)</label>
-                            <input type="number" name="weight" class="form-control" min="0" placeholder="0">
+                            <input type="number"
+                                   name="weight"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0">
                         </div>
+
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Skids</label>
-                            <input type="number" name="skids" class="form-control" min="0" placeholder="0">
+                            <input type="number"
+                                   name="skids"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0">
                         </div>
+
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Bundles</label>
-                            <input type="number" name="bundles" class="form-control" min="0" placeholder="0">
+                            <input type="number"
+                                   name="bundles"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0">
                         </div>
+
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Coils</label>
-                            <input type="number" name="coils" class="form-control" min="0" placeholder="0">
+                            <input type="number"
+                                   name="coils"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0">
                         </div>
                     </div>
 
                     <div class="mt-5 d-flex gap-3">
-                        <button type="submit" class="btn btn-warning btn-lg flex-grow-1 fw-bold">ADD RETURN</button>
-                        <a href="{% url 'run_sheet' %}" class="btn btn-outline-secondary btn-lg fw-bold">Cancel</a>
+                        <button type="submit" class="btn btn-warning btn-lg flex-grow-1 fw-bold">
+                            ADD RETURN PICKUP
+                        </button>
+
+                        <a href="{% url 'run_sheet' %}" class="btn btn-outline-secondary btn-lg fw-bold">
+                            Cancel
+                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}

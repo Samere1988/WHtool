@@ -1,34 +1,96 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
+    <div class="col-md-7">
         <div class="card shadow border-0">
             <div class="card-header bg-primary text-white py-3">
-                <h4 class="mb-0 fw-bold"><i class="bi bi-truck-flatbed me-2"></i>Outbound Load Inspection</h4>
+                <h4 class="mb-0 fw-bold">
+                    <i class="bi bi-truck-flatbed me-2"></i>Outbound Load Photos
+                </h4>
             </div>
+
             <div class="card-body p-4">
                 <form method="post" enctype="multipart/form-data">
                     {% csrf_token %}
 
                     <div class="mb-4">
+                        <label class="form-label fw-bold">Date Loaded</label>
+                        <input type="date"
+                               name="date_loaded"
+                               class="form-control form-control-lg"
+                               value="{{ today|date:'Y-m-d' }}"
+                               required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Loaded By</label>
+                        <input type="text"
+                               name="loaded_by"
+                               class="form-control form-control-lg"
+                               placeholder="Employee name"
+                               required>
+                    </div>
+
+                    <div class="mb-4">
                         <label class="form-label fw-bold">Truck Name / Carrier</label>
-                        <input type="text" name="truck_name" class="form-control form-control-lg" placeholder="e.g. Edward, Leo" required>
+                        <input type="text"
+                               name="truck_name"
+                               class="form-control form-control-lg"
+                               placeholder="e.g. Edward, Leo"
+                               required>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Upload Photos</label>
-                        <input class="form-control form-control-lg" type="file" name="photos" accept="image/*" multiple required>
+                        <input class="form-control form-control-lg"
+                               type="file"
+                               name="photos"
+                               accept="image/*"
+                               multiple
+                               required>
                     </div>
 
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-success btn-lg flex-grow-1 fw-bold shadow-sm text-white">
-                            <i class="bi bi-cloud-arrow-up-fill me-2"></i>Save to Today's Folder
+                            <i class="bi bi-cloud-arrow-up-fill me-2"></i>Upload Photos
                         </button>
-                        <a href="{% url 'outbound_list' %}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+
+                        <a href="{% url 'outbound_list' %}" class="btn btn-outline-secondary btn-lg">
+                            Cancel
+                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+<style>
+    @media (max-width: 576px) {
+        .card {
+            border-radius: 16px;
+        }
+
+        .card-header h4 {
+            font-size: 1.15rem;
+        }
+
+        .card-body {
+            padding: 1.25rem !important;
+        }
+
+        .form-control-lg {
+            font-size: 1rem;
+            padding: 0.85rem;
+        }
+
+        .d-flex.gap-2.mt-4 {
+            flex-direction: column;
+        }
+
+        .d-flex.gap-2.mt-4 .btn {
+            width: 100%;
+        }
+    }
+</style>
 {% endblock %}

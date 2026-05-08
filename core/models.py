@@ -46,6 +46,7 @@ class RunSheet(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     postal_code = models.CharField(max_length=20, blank=True, null=True)
     load_index = models.IntegerField(default=0)
+    shipping_date = models.DateField(default=timezone.now)
 
 
     class Meta:
@@ -89,10 +90,93 @@ class FinalizedRunSheet(models.Model):
     class Meta:
         db_table = 'finalized_run_sheets'
 
+class DailyRunSheetCommit(models.Model):
+    shipping_date = models.DateField()
+    committed_at = models.DateTimeField(auto_now_add=True)
+
+    total_weight = models.IntegerField(default=0)
+    total_skids = models.IntegerField(default=0)
+    total_bundles = models.IntegerField(default=0)
+    total_coils = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"Run Sheet Commit - {self.shipping_date}"
+
+
+class DailyRunSheetEntry(models.Model):
+    commit = models.ForeignKey(
+        DailyRunSheetCommit,
+        related_name="entries",
+        on_delete=models.CASCADE
+    )
+
+    original_run_sheet_id = models.IntegerField(blank=True, null=True)
+
+    customer_id = models.CharField(max_length=50, blank=True, null=True)
+    customer_name = models.TextField(blank=True, null=True)
+    order_number = models.CharField(max_length=50, blank=True, null=True)
+
+    address = models.TextField(blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    postal_code = models.CharField(max_length=20, blank=True, null=True)
+
+    region = models.CharField(max_length=100, blank=True, null=True)
+    driver_name = models.CharField(max_length=100, blank=True, null=True)
+    load_index = models.IntegerField(default=0)
+
+    closing_time = models.CharField(max_length=50, blank=True, null=True)
+
+    weight = models.IntegerField(default=0)
+    skids = models.IntegerField(default=0)
+    bundles = models.IntegerField(default=0)
+    coils = models.IntegerField(default=0)
+
+    is_pickup = models.BooleanField(default=False)
+    is_return = models.BooleanField(default=False)
+
+    prepared_by = models.CharField(max_length=255, blank=True, null=True)
+    line_items = models.IntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["region", "load_index", "customer_name", "order_number"]
+
+
+class EmployeeDailyStat(models.Model):
+    commit = models.ForeignKey(
+        DailyRunSheetCommit,
+        related_name="employee_stats",
+        on_delete=models.CASCADE
+    )
+
+    employee_name = models.CharField(max_length=100)
+
+    orders_picked = models.IntegerField(default=0)
+    total_lines = models.IntegerField(default=0)
+
+    bar_orders = models.IntegerField(default=0)
+    bar_lines = models.IntegerField(default=0)
+
+    sheet_orders = models.IntegerField(default=0)
+    sheet_lines = models.IntegerField(default=0)
+
+    covering_orders = models.IntegerField(default=0)
+    covering_lines = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ("commit", "employee_name")
+        ordering = ["employee_name"]
+
+    def __str__(self):
+        return f"{self.employee_name} - {self.commit.shipping_date}"
+
 
 class Container(models.Model):
     container_number = models.CharField(max_length=100)
     date_received = models.DateTimeField(auto_now_add=True)
+    unloaded_by = models.CharField(max_length=100, blank=True, null=True)
+
 
     def __str__(self):
         return self.container_number
@@ -108,6 +192,8 @@ class OutboundLoad(models.Model):
     # Just a clean text field now, no choices!
     truck_name = models.CharField(max_length=100)
     date_loaded = models.DateField(auto_now_add=True)
+    loaded_by = models.CharField(max_length=100, blank=True, null=True)
+
 
     def __str__(self):
         return f"{self.truck_name} - {self.date_loaded}"
@@ -158,6 +244,8 @@ class PickupPhotoLog(models.Model):
     customer_name = models.CharField(max_length=255)
     order_number = models.CharField(max_length=100)
     date_picked_up = models.DateField(default=timezone.now)
+    loaded_by = models.CharField(max_length=100, blank=True, null=True)
+
 
     def __str__(self):
         return f"{self.customer_name} - {self.order_number}"

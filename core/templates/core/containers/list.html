@@ -3,7 +3,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="fw-bold"><i class="bi bi-box-seam me-2"></i>Inbound Containers</h2>
     <a href="{% url 'add_container' %}" class="btn btn-primary shadow-sm fw-bold">
-        <i class="bi bi-camera-fill me-2"></i>New Container
+        <i class="bi bi-camera-fill me-2"></i>Add Photos
     </a>
 </div>
 
@@ -17,6 +17,9 @@
                     <h4 class="fw-bold text-dark">{{ c.container_number }}</h4>
                     <p class="text-muted small mb-0">Received: {{ c.date_received|date:"M j, Y - g:i A" }}</p>
                     <span class="badge bg-secondary mt-2">{{ c.photos.count }} Photos</span>
+                    {% if c.unloaded_by %}
+                        <p class="text-muted small mb-0">Unloaded by: {{ c.unloaded_by }}</p>
+                    {% endif %}
                 </div>
             </div>
         </a>
@@ -27,4 +30,42 @@
     </div>
     {% endfor %}
 </div>
+<style>
+    .folder-hover:hover,
+    .truck-card:hover {
+        transform: translateY(-3px);
+        transition: 0.2s;
+    }
+
+    @media (max-width: 576px) {
+        .d-flex.justify-content-between.align-items-center.mb-4 {
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 0.75rem;
+        }
+
+        .d-flex.justify-content-between.align-items-center.mb-4 h2 {
+            font-size: 1.4rem;
+            margin-bottom: 0;
+        }
+
+        .d-flex.justify-content-between.align-items-center.mb-4 .btn {
+            width: 100%;
+            padding: 0.85rem;
+            font-size: 1rem;
+        }
+
+        .card-body.d-flex.align-items-center {
+            padding: 1rem;
+        }
+
+        .card-body h5 {
+            font-size: 1rem;
+        }
+
+        .card-body small {
+            font-size: 0.8rem;
+        }
+    }
+</style>
 {% endblock %}

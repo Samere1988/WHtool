@@ -3,7 +3,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="fw-bold"><i class="bi bi-truck-flatbed me-2"></i>Outbound Loads</h2>
     <a href="{% url 'add_outbound_photos' %}" class="btn btn-success shadow-sm fw-bold">
-        <i class="bi bi-camera-fill me-2"></i>Upload Load Photos
+        <i class="bi bi-camera-fill me-2"></i>Add Photos
     </a>
 </div>
 
@@ -25,6 +25,9 @@
                         <div>
                             <h5 class="mb-0 fw-bold text-dark">{{ load.truck_name }}</h5>
                             <small class="text-muted">{{ load.photos.count }} Photos</small>
+                            {% if load.loaded_by %}
+                                <small class="text-muted d-block">Loaded by: {{ load.loaded_by }}</small>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -35,4 +38,42 @@
 {% empty %}
     <p class="text-center text-muted py-5">No outbound photos logged yet.</p>
 {% endfor %}
+<style>
+    .folder-hover:hover,
+    .truck-card:hover {
+        transform: translateY(-3px);
+        transition: 0.2s;
+    }
+
+    @media (max-width: 576px) {
+        .d-flex.justify-content-between.align-items-center.mb-4 {
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 0.75rem;
+        }
+
+        .d-flex.justify-content-between.align-items-center.mb-4 h2 {
+            font-size: 1.4rem;
+            margin-bottom: 0;
+        }
+
+        .d-flex.justify-content-between.align-items-center.mb-4 .btn {
+            width: 100%;
+            padding: 0.85rem;
+            font-size: 1rem;
+        }
+
+        .card-body.d-flex.align-items-center {
+            padding: 1rem;
+        }
+
+        .card-body h5 {
+            font-size: 1rem;
+        }
+
+        .card-body small {
+            font-size: 0.8rem;
+        }
+    }
+</style>
 {% endblock %}

@@ -11,6 +11,25 @@
     .scrollable-pickers { max-height: 180px; overflow-y: auto; overflow-x: hidden; padding-right: 5px; }
     .scrollable-pickers::-webkit-scrollbar { width: 6px; }
     .scrollable-pickers::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 4px; }
+
+    .customer-info-card {
+        border-left: 5px solid #0d6efd;
+        background: #f8fbff;
+    }
+
+    .customer-info-card .form-control,
+    .customer-info-card .form-select {
+        font-weight: 600;
+    }
+
+    .section-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #212529;
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
 </style>
 
 <div class="row justify-content-center">
@@ -29,59 +48,184 @@
             <div class="card-body p-4">
                 <form method="post" id="deliveryForm">
                     {% csrf_token %}
+                    <input type="hidden"
+                       name="shipping_date"
+                       value="{{ selected_shipping_date|date:'Y-m-d' }}">
+
+                    <div class="card customer-info-card shadow-sm border-0 mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="fw-bold mb-1">
+                                        <i class="bi bi-person-vcard me-2"></i>Customer / Delivery Information
+                                    </h5>
+                                    <p class="text-muted small mb-0">
+                                        Changes here apply only to this run sheet entry. They will not update the customer database.
+                                    </p>
+                                </div>
+                                <span class="badge bg-primary">{{ customer.customer_id }}</span>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Customer Name</label>
+                                    <input type="text"
+                                           class="form-control form-control-lg"
+                                           value="{{ customer.customer_name }}"
+                                           readonly>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Address</label>
+                                    <input type="text"
+                                           name="address"
+                                           class="form-control form-control-lg"
+                                           value="{% if order %}{{ order.address }}{% else %}{{ customer.address }}{% endif %}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">City</label>
+                                    <input type="text"
+                                           name="city"
+                                           class="form-control"
+                                           value="{% if order %}{{ order.city }}{% else %}{{ customer.city }}{% endif %}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Postal Code</label>
+                                    <input type="text"
+                                           name="postal_code"
+                                           class="form-control text-uppercase"
+                                           value="{% if order %}{{ order.postal_code }}{% else %}{{ customer.postal_code }}{% endif %}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Region / Truck</label>
+                                    <select name="region" class="form-select">
+                                        {% for region in regions %}
+                                            <option value="{{ region }}"
+                                                {% if order and order.region == region %}
+                                                    selected
+                                                {% elif not order and customer.region == region %}
+                                                    selected
+                                                {% endif %}
+                                            >
+                                                {{ region }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="row g-3 mb-4">
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Order Number</label>
-                            <input type="text" name="order_number" class="form-control form-control-lg" value="{{ order.order_number|default:'W' }}" required>
+                            <input type="text"
+                                   name="order_number"
+                                   class="form-control form-control-lg"
+                                   value="{{ order.order_number|default:'W' }}"
+                                   required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Closing Time</label>
+                            <input type="text"
+                                   name="closing_time"
+                                   class="form-control form-control-lg"
+                                   placeholder="Example: 3:00 PM"
+                                   value="{{ order.closing_time|default_if_none:'' }}">
                         </div>
                     </div>
 
-                    <h5 class="fw-bold mb-3 border-bottom pb-2">Preparation Tracking</h5>
+                    <h5 class="section-title">Preparation Tracking</h5>
+
                     <div class="row g-3 mb-4">
                         <div class="col-md-4">
                             <div class="card h-100 shadow-sm border-primary">
                                 <div class="card-header bg-primary text-white fw-bold py-2">Bar Station</div>
                                 <div class="card-body bg-light p-3">
                                     <label class="form-label fw-bold small text-muted">BAR LINE ITEMS</label>
-                                    <input type="number" name="bar_lines" class="form-control mb-3" min="0" placeholder="0" value="{{ archive.bar_lines|default_if_none:'' }}">
+                                    <input type="number"
+                                           name="bar_lines"
+                                           class="form-control mb-3"
+                                           min="0"
+                                           placeholder="0"
+                                           value="{{ archive.bar_lines|default_if_none:'' }}">
+
                                     <label class="form-label fw-bold small text-muted">PREPARED BY</label>
                                     <div class="d-flex flex-wrap gap-1 picker-btn-group bar-group scrollable-pickers bg-white border rounded p-2">
                                         {% for name in bar_employees %}
-                                        <input type="checkbox" class="btn-check picker-checkbox" name="bar_prep" id="bar-btn-{{ forloop.counter }}" value="{{ name }}" autocomplete="off" {% if name in saved_bar %}checked{% endif %}>
-                                        <label class="btn btn-outline-primary picker-btn fw-bold" for="bar-btn-{{ forloop.counter }}">{{ name }}</label>
+                                        <input type="checkbox"
+                                               class="btn-check picker-checkbox"
+                                               name="bar_prep"
+                                               id="bar-btn-{{ forloop.counter }}"
+                                               value="{{ name }}"
+                                               autocomplete="off"
+                                               {% if name in saved_bar %}checked{% endif %}>
+                                        <label class="btn btn-outline-primary picker-btn fw-bold"
+                                               for="bar-btn-{{ forloop.counter }}">{{ name }}</label>
                                         {% endfor %}
                                     </div>
                                 </div>
                             </div>
                         </div>
+
                         <div class="col-md-4">
                             <div class="card h-100 shadow-sm border-success">
                                 <div class="card-header bg-success text-white fw-bold py-2">Sheet Station</div>
                                 <div class="card-body bg-light p-3">
                                     <label class="form-label fw-bold small text-muted">SHEET LINE ITEMS</label>
-                                    <input type="number" name="sheet_lines" class="form-control mb-3" min="0" placeholder="0" value="{{ archive.sheet_lines|default_if_none:'' }}">
+                                    <input type="number"
+                                           name="sheet_lines"
+                                           class="form-control mb-3"
+                                           min="0"
+                                           placeholder="0"
+                                           value="{{ archive.sheet_lines|default_if_none:'' }}">
+
                                     <label class="form-label fw-bold small text-muted">PREPARED BY</label>
                                     <div class="d-flex flex-wrap gap-1 picker-btn-group sheet-group scrollable-pickers bg-white border rounded p-2">
                                         {% for name in sheet_employees %}
-                                        <input type="checkbox" class="btn-check picker-checkbox" name="sheet_prep" id="sheet-btn-{{ forloop.counter }}" value="{{ name }}" autocomplete="off" {% if name in saved_sheet %}checked{% endif %}>
-                                        <label class="btn btn-outline-success picker-btn fw-bold" for="sheet-btn-{{ forloop.counter }}">{{ name }}</label>
+                                        <input type="checkbox"
+                                               class="btn-check picker-checkbox"
+                                               name="sheet_prep"
+                                               id="sheet-btn-{{ forloop.counter }}"
+                                               value="{{ name }}"
+                                               autocomplete="off"
+                                               {% if name in saved_sheet %}checked{% endif %}>
+                                        <label class="btn btn-outline-success picker-btn fw-bold"
+                                               for="sheet-btn-{{ forloop.counter }}">{{ name }}</label>
                                         {% endfor %}
                                     </div>
                                 </div>
                             </div>
                         </div>
+
                         <div class="col-md-4">
                             <div class="card h-100 shadow-sm border-warning">
                                 <div class="card-header bg-warning text-dark fw-bold py-2">Covering Station</div>
                                 <div class="card-body bg-light p-3">
                                     <label class="form-label fw-bold small text-muted">COVERING LINE ITEMS</label>
-                                    <input type="number" name="covering_lines" class="form-control mb-3" min="0" placeholder="0" value="{{ archive.covering_lines|default_if_none:'' }}">
+                                    <input type="number"
+                                           name="covering_lines"
+                                           class="form-control mb-3"
+                                           min="0"
+                                           placeholder="0"
+                                           value="{{ archive.covering_lines|default_if_none:'' }}">
+
                                     <label class="form-label fw-bold small text-muted">PREPARED BY</label>
                                     <div class="d-flex flex-wrap gap-1 picker-btn-group cov-group scrollable-pickers bg-white border rounded p-2">
                                         {% for name in cov_employees %}
-                                        <input type="checkbox" class="btn-check picker-checkbox" name="covering_prep" id="cov-btn-{{ forloop.counter }}" value="{{ name }}" autocomplete="off" {% if name in saved_cov %}checked{% endif %}>
-                                        <label class="btn btn-outline-warning text-dark picker-btn fw-bold" for="cov-btn-{{ forloop.counter }}">{{ name }}</label>
+                                        <input type="checkbox"
+                                               class="btn-check picker-checkbox"
+                                               name="covering_prep"
+                                               id="cov-btn-{{ forloop.counter }}"
+                                               value="{{ name }}"
+                                               autocomplete="off"
+                                               {% if name in saved_cov %}checked{% endif %}>
+                                        <label class="btn btn-outline-warning text-dark picker-btn fw-bold"
+                                               for="cov-btn-{{ forloop.counter }}">{{ name }}</label>
                                         {% endfor %}
                                     </div>
                                 </div>
@@ -91,33 +235,63 @@
 
                     <hr>
 
-                    <h5 class="fw-bold mb-3">Load Totals</h5>
+                    <h5 class="section-title">Load Totals</h5>
+
                     <div class="row g-3">
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Weight (lbs)</label>
-                            <input type="number" name="weight" class="form-control" min="0" placeholder="0" value="{{ order.weight|default_if_none:'' }}">
+                            <input type="number"
+                                   name="weight"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0"
+                                   value="{{ order.weight|default_if_none:'' }}">
                         </div>
+
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Skids</label>
-                            <input type="number" name="skids" class="form-control" min="0" placeholder="0" value="{{ order.skids|default_if_none:'' }}">
+                            <input type="number"
+                                   name="skids"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0"
+                                   value="{{ order.skids|default_if_none:'' }}">
                         </div>
+
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Bundles</label>
-                            <input type="number" name="bundles" class="form-control" min="0" placeholder="0" value="{{ order.bundles|default_if_none:'' }}">
+                            <input type="number"
+                                   name="bundles"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0"
+                                   value="{{ order.bundles|default_if_none:'' }}">
                         </div>
+
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Coils</label>
-                            <input type="number" name="coils" class="form-control" min="0" placeholder="0" value="{{ order.coils|default_if_none:'' }}">
+                            <input type="number"
+                                   name="coils"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0"
+                                   value="{{ order.coils|default_if_none:'' }}">
                         </div>
                     </div>
 
                     <div class="mt-5 d-flex gap-3">
-                        <button type="submit" class="btn btn-success btn-lg flex-grow-1 fw-bold">SAVE & ADD</button>
-                        <a href="{% url 'run_sheet' %}" class="btn btn-outline-secondary btn-lg fw-bold">Cancel</a>
+                        <button type="submit" class="btn btn-success btn-lg flex-grow-1 fw-bold">
+                            {% if order %}SAVE CHANGES{% else %}SAVE & ADD{% endif %}
+                        </button>
+
+                        <a href="{% url 'run_sheet' %}" class="btn btn-outline-secondary btn-lg fw-bold">
+                            Cancel
+                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}

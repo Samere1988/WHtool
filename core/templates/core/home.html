@@ -1,90 +1,105 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-4 mt-2">
-    <div class="col">
-        <h2 class="fw-bold">Welcome back, {{ user.username|default:"Samer" }}</h2>
-    </div>
-</div>
-
-<div class="row g-4 mb-5">
-    <div class="col-md-4">
-        <a href="{% url 'run_sheet' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center">
-            <div class="icon-box bg-primary text-white mx-auto mb-3" style="width: 70px; height: 70px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
-                <i class="bi bi-calendar-event"></i>
-            </div>
-            <h3 class="h5 fw-bold mb-0">Daily Run Sheet</h3>
-        </a>
-    </div>
-
-<div class="col-md-4">
-    <a href="{% url 'pickup_log_list' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center border-bottom border-indigo border-4">
-        <div class="icon-box mx-auto mb-3" style="width: 70px; height: 70px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2rem; background-color: #6610f2; color: white;">
-            <i class="bi bi-person-badge"></i>
+<div class="home-page">
+    <div class="row mb-4 mt-2">
+        <div class="col">
+            <h2 class="fw-bold home-title">Welcome back, {{ user.username|default:"Samer" }}</h2>
+            <p class="text-muted mb-0">Choose what you want to work on.</p>
         </div>
-        <h3 class="h5 fw-bold mb-0">Customer Pickup / Other</h3>
-    </a>
-</div>
-<div class="col-md-4">
-    <a href="{% url 'pickup_photo_list' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center border-bottom border-indigo border-4">
-        <div class="icon-box mx-auto mb-3" style="width: 70px; height: 70px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2rem; background-color: #6610f2; color: white;">
-            <i class="bi bi-camera"></i>
+    </div>
+
+    <div class="row g-4 mb-5 home-card-grid">
+        <div class="col-12 col-sm-6 col-lg-4">
+            <a href="{% url 'run_sheet' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center">
+                <div class="icon-box bg-primary text-white mx-auto mb-3">
+                    <i class="bi bi-calendar-event"></i>
+                </div>
+                <h3 class="h5 fw-bold mb-0">Daily Run Sheet</h3>
+            </a>
         </div>
-        <h3 class="h5 fw-bold mb-0">Pickup Photo</h3>
-    </a>
-</div>
-<style>
-    .border-indigo { border-color: #6610f2 !important; }
-</style>
-    <div class="col-md-4">
-        <a href="{% url 'manage_customers' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center">
-            <div class="icon-box bg-success text-white mx-auto mb-3" style="width: 70px; height: 70px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
-                <i class="bi bi-people-fill"></i>
-            </div>
-            <h3 class="h5 fw-bold mb-0">Customer Database</h3>
-        </a>
-    </div>
 
-    <div class="col-md-4">
-        <a href="{% url 'manage_vendors' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center border-bottom border-teal border-4">
-            <div class="icon-box mx-auto mb-3" style="width: 70px; height: 70px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2rem; background-color: #20c997; color: white;">
-                <i class="bi bi-shop"></i>
-            </div>
-            <h3 class="h5 fw-bold mb-0">Vendor Database</h3>
-        </a>
-    </div>
+        <div class="col-12 col-sm-6 col-lg-4">
+            <a href="{% url 'pickup_log_list' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center border-bottom border-indigo border-4">
+                <div class="icon-box mx-auto mb-3 bg-indigo text-white">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <h3 class="h5 fw-bold mb-0">Customer Pickup / Other</h3>
+            </a>
+        </div>
 
-    <div class="col-md-4">
-        <a href="{% url 'container_list' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center">
-            <div class="icon-box bg-warning text-dark mx-auto mb-3" style="width: 70px; height: 70px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
-                <i class="bi bi-camera-fill"></i>
-            </div>
-            <h3 class="h5 fw-bold mb-0">Container Photos</h3>
-        </a>
-    </div>
+        <div class="col-12 col-sm-6 col-lg-4">
+            <a href="{% url 'photos_home' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center border-bottom border-warning border-4">
+                <div class="icon-box bg-warning text-dark mx-auto mb-3">
+                    <i class="bi bi-camera-fill"></i>
+                </div>
+                <h3 class="h5 fw-bold mb-0">Photos</h3>
+            </a>
+        </div>
 
-    <div class="col-md-4">
-        <a href="{% url 'outbound_list' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center">
-            <div class="icon-box bg-info text-white mx-auto mb-3" style="width: 70px; height: 70px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
-                <i class="bi bi-truck-flatbed"></i>
-            </div>
-            <h3 class="h5 fw-bold mb-0">Outbound Photos</h3>
-        </a>
-    </div>
+        <div class="col-12 col-sm-6 col-lg-4">
+            <a href="{% url 'manage_customers' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center">
+                <div class="icon-box bg-success text-white mx-auto mb-3">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <h3 class="h5 fw-bold mb-0">Customer Database</h3>
+            </a>
+        </div>
 
-    <div class="col-md-4">
-        <a href="{% url 'stats' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center">
-            <div class="icon-box bg-dark text-white mx-auto mb-3" style="width: 70px; height: 70px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
-                <i class="bi bi-graph-up-arrow"></i>
-            </div>
-            <h3 class="h5 fw-bold mb-0">Workplace Stats</h3>
-        </a>
+        <div class="col-12 col-sm-6 col-lg-4">
+            <a href="{% url 'manage_vendors' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center border-bottom border-teal border-4">
+                <div class="icon-box mx-auto mb-3 bg-teal text-white">
+                    <i class="bi bi-shop"></i>
+                </div>
+                <h3 class="h5 fw-bold mb-0">Vendor Database</h3>
+            </a>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-4">
+            <a href="{% url 'stats' %}" class="card nav-card p-4 shadow-sm border-0 h-100 text-center">
+                <div class="icon-box bg-dark text-white mx-auto mb-3">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <h3 class="h5 fw-bold mb-0">Workplace Stats</h3>
+            </a>
+        </div>
     </div>
 </div>
 
 <style>
-    .text-teal { color: #20c997; }
-    .border-teal { border-color: #20c997 !important; }
+    .home-page {
+        padding-bottom: 2rem;
+    }
+
+    .home-title {
+        font-size: 2rem;
+    }
+
+    .icon-box {
+        width: 70px;
+        height: 70px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+    }
+
+    .bg-indigo {
+        background-color: #6610f2;
+    }
+
+    .border-indigo {
+        border-color: #6610f2 !important;
+    }
+
+    .bg-teal {
+        background-color: #20c997;
+    }
+
+    .border-teal {
+        border-color: #20c997 !important;
+    }
 
     .nav-card {
         transition: all 0.3s ease;
@@ -93,13 +108,55 @@
         display: flex;
         flex-direction: column;
         justify-content: center;
+        min-height: 185px;
+        border-radius: 18px;
     }
+
     .nav-card:hover {
         transform: translateY(-8px);
         box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
         border: 1px solid #0d6efd !important;
     }
-    .nav-card h3 { transition: color 0.3s ease; }
-    .nav-card:hover h3 { color: #0d6efd; }
+
+    .nav-card h3 {
+        transition: color 0.3s ease;
+    }
+
+    .nav-card:hover h3 {
+        color: #0d6efd;
+    }
+
+    @media (max-width: 576px) {
+        .home-page {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+        }
+
+        .home-title {
+            font-size: 1.5rem;
+        }
+
+        .home-card-grid {
+            --bs-gutter-y: 1rem;
+        }
+
+        .nav-card {
+            min-height: 140px;
+            padding: 1.25rem !important;
+            border-radius: 16px;
+        }
+
+        .icon-box {
+            width: 58px;
+            height: 58px;
+            font-size: 1.6rem;
+            border-radius: 13px;
+            margin-bottom: 0.75rem !important;
+        }
+
+        .nav-card h3 {
+            font-size: 1rem;
+        }
+    }
 </style>
 {% endblock %}

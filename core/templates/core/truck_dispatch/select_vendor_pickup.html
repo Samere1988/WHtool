@@ -20,7 +20,7 @@
                 <td>{{ v.city }}</td>
                 <td><span class="badge bg-secondary">{{ v.region }}</span></td>
                 <td class="text-end">
-                    <a href="{% url 'add_pickup_form' v.pk %}" class="btn btn-success btn-sm fw-bold">
+                    <a href="{% url 'add_pickup_form' v.pk %}?shipping_date={{ selected_shipping_date|date:'Y-m-d' }}" class="btn btn-success btn-sm fw-bold">
                         SELECT <i class="bi bi-chevron-right ms-1"></i>
                     </a>
                 </td>

@@ -1,33 +1,107 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
+    <div class="col-md-7">
         <div class="card shadow border-0">
             <div class="card-header text-white py-3" style="background-color: #6610f2;">
-                <h4 class="mb-0 fw-bold"><i class="bi bi-camera-fill me-2"></i>Add New Pickup Photos</h4>
+                <h4 class="mb-0 fw-bold">
+                    <i class="bi bi-camera-fill me-2"></i>Add Customer Pickup Photos
+                </h4>
             </div>
+
             <div class="card-body p-4">
                 <form method="post" enctype="multipart/form-data">
                     {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Date Loaded</label>
+                        <input type="date"
+                               name="date_picked_up"
+                               class="form-control form-control-lg"
+                               value="{{ today|date:'Y-m-d' }}"
+                               required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Loaded By</label>
+                        <input type="text"
+                               name="loaded_by"
+                               class="form-control form-control-lg"
+                               placeholder="Employee name"
+                               required>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label fw-bold">Customer Name</label>
-                        <input type="text" name="customer_name" class="form-control" placeholder="Required" required>
+                        <input type="text"
+                               name="customer_name"
+                               class="form-control"
+                               placeholder="Required"
+                               required>
                     </div>
+
                     <div class="mb-3">
                         <label class="form-label fw-bold">Order Number</label>
-                        <input type="text" name="order_number" class="form-control" placeholder="Optional">
+                        <input type="text"
+                               name="order_number"
+                               class="form-control"
+                               placeholder="Optional">
                     </div>
+
                     <div class="mb-4">
                         <label class="form-label fw-bold text-primary">Capture / Select Photos</label>
-                        <input type="file" name="photos" class="form-control form-control-lg" accept="image/*" multiple required>
+                        <input type="file"
+                               name="photos"
+                               class="form-control form-control-lg"
+                               accept="image/*"
+                               multiple
+                               required>
                         <small class="text-muted">You can select multiple photos at once.</small>
                     </div>
-                    <button type="submit" class="btn btn-indigo btn-lg w-100 text-white fw-bold shadow-sm" style="background-color: #6610f2;">
-                        UPLOAD PHOTOS
-                    </button>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit"
+                                class="btn btn-indigo btn-lg flex-grow-1 text-white fw-bold shadow-sm"
+                                style="background-color: #6610f2;">
+                            UPLOAD PHOTOS
+                        </button>
+
+                        <a href="{% url 'pickup_photo_list' %}" class="btn btn-outline-secondary btn-lg">
+                            Cancel
+                        </a>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+<style>
+    @media (max-width: 576px) {
+        .card {
+            border-radius: 16px;
+        }
+
+        .card-header h4 {
+            font-size: 1.15rem;
+        }
+
+        .card-body {
+            padding: 1.25rem !important;
+        }
+
+        .form-control-lg {
+            font-size: 1rem;
+            padding: 0.85rem;
+        }
+
+        .d-flex.gap-2.mt-4 {
+            flex-direction: column;
+        }
+
+        .d-flex.gap-2.mt-4 .btn {
+            width: 100%;
+        }
+    }
+</style>
 {% endblock %}

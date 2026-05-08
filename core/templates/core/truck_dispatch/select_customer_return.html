@@ -20,7 +20,7 @@
                 <td class="fw-bold">{{ c.customer_name }}</td>
                 <td>{{ c.city }}</td>
                 <td class="text-end">
-                    <a href="{% url 'add_return_form' c.customer_id %}" class="btn btn-warning btn-sm fw-bold">
+                    <a href="{% url 'add_return_form' c.customer_id %}?shipping_date={{ selected_shipping_date|date:'Y-m-d' }}" class="btn btn-warning btn-sm fw-bold">
                         SELECT <i class="bi bi-chevron-right ms-1"></i>
                     </a>
                 </td>

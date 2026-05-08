@@ -1,92 +1,229 @@
 {% extends "base.html" %}
+
 {% block content %}
+<style>
+    .vendor-info-card {
+        border-left: 5px solid #198754;
+        background: #f4fff8;
+    }
+
+    .vendor-info-card .form-control,
+    .vendor-info-card .form-select {
+        font-weight: 600;
+    }
+
+    .section-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #212529;
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .redirect-box {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.75rem;
+    }
+</style>
+
 <div class="row justify-content-center">
-    <div class="col-md-8">
+    <div class="col-md-10">
         <div class="card shadow border-0">
             <div class="card-header bg-success text-white py-3">
-                <h4 class="mb-0 fw-bold"><i class="bi bi-arrow-down-circle me-2"></i>Pickup/Redirect: {{ vendor.name }}</h4>
+                <h4 class="mb-0 fw-bold">
+                    <i class="bi bi-arrow-down-circle me-2"></i>
+                    New Vendor Pickup: {{ vendor.name }}
+                </h4>
             </div>
+
             <div class="card-body p-4">
-                <form method="post">
+                <form method="post" id="pickupForm">
                     {% csrf_token %}
+                    <input type="hidden"
+                       name="shipping_date"
+                       value="{{ selected_shipping_date|date:'Y-m-d' }}">
 
-                    <div class="row mb-4">
-                        <div class="col-md-8">
-                            <label class="form-label fw-bold">PO Number(s)</label>
-                            <input type="text" name="po_numbers" class="form-control form-control-lg border-success" placeholder="PO#" required>
+                    <div class="card vendor-info-card shadow-sm border-0 mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="fw-bold mb-1">
+                                        <i class="bi bi-shop me-2"></i>Vendor / Pickup Information
+                                    </h5>
+                                    <p class="text-muted small mb-0">
+                                        Changes here apply only to this pickup entry. They will not update the vendor database.
+                                    </p>
+                                </div>
+                                <span class="badge bg-success">{{ vendor.id }}</span>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Vendor Name</label>
+                                    <input type="text"
+                                           class="form-control form-control-lg"
+                                           value="{{ vendor.name }}"
+                                           readonly>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Address</label>
+                                    <input type="text"
+                                           name="address"
+                                           class="form-control form-control-lg"
+                                           value="{{ vendor.address }}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">City</label>
+                                    <input type="text"
+                                           name="city"
+                                           class="form-control"
+                                           value="{{ vendor.city }}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Postal Code</label>
+                                    <input type="text"
+                                           name="postal_code"
+                                           class="form-control text-uppercase"
+                                           value="{{ vendor.postal_code }}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Region / Truck</label>
+                                    <select name="region" class="form-select border-success shadow-sm">
+                                        {% for region in regions %}
+                                            <option value="{{ region }}"
+                                                {% if vendor.region == region %}selected{% endif %}
+                                            >
+                                                {{ region }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <h5 class="fw-bold mb-3 border-bottom pb-2 text-success">1. Pickup From</h5>
                     <div class="row g-3 mb-4">
-                        <div class="col-md-12">
-                            <label class="form-label">Street Address</label>
-                            <input type="text" name="address" class="form-control" value="{{ vendor.address }}">
-                        </div>
                         <div class="col-md-5">
-                            <label class="form-label">City</label>
-                            <input type="text" name="city" class="form-control" value="{{ vendor.city }}">
+                            <label class="form-label fw-bold">PO Number(s)</label>
+                            <input type="text"
+                                   name="po_numbers"
+                                   class="form-control form-control-lg border-success"
+                                   placeholder="Example: PO12345, PO12346"
+                                   required>
                         </div>
-                        <div class="col-md-7">
-                            <label class="form-label">Truck / Region (Assigned Truck)</label>
-                            <select name="region" class="form-select border-success shadow-sm">
-                                {% for r in regions %}
-                                    <option value="{{ r }}" {% if vendor.region == r %}selected{% endif %}>{{ r }}</option>
-                                 {% endfor %}
-                            </select>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Closing Time</label>
+                            <input type="text"
+                                   name="closing_time"
+                                   class="form-control form-control-lg"
+                                   placeholder="Example: 3:00 PM">
                         </div>
                     </div>
 
-                    <div class="form-check form-switch mb-4 p-3 bg-light rounded border">
-                        <input class="form-check-input ms-0 me-2" type="checkbox" name="is_redirect" id="redirectToggle">
-                        <label class="form-check-label fw-bold text-primary" for="redirectToggle">
-                            <i class="bi bi-truck me-1"></i> Delivering to a second location? (Redirect)
+                    <div class="form-check form-switch mb-4 p-3 redirect-box">
+                        <input class="form-check-input ms-0 me-2"
+                               type="checkbox"
+                               name="is_redirect"
+                               id="redirectToggle">
+
+                        <label class="form-check-label fw-bold text-primary"
+                               for="redirectToggle">
+                            <i class="bi bi-truck me-1"></i>
+                            Delivering to a second location? Redirect
                         </label>
+
+                        <div class="text-muted small mt-1">
+                            Use this only if the driver is picking up from this vendor and delivering somewhere else.
+                        </div>
                     </div>
 
                     <div id="deliverySection" style="display: none;">
-                        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary">2. Deliver To</h5>
+                        <h5 class="section-title text-primary">Deliver To</h5>
+
                         <div class="row g-3 mb-4">
                             <div class="col-md-12">
-                                <label class="form-label">Destination Company Name</label>
-                                <input type="text" name="dest_name" class="form-control border-primary" placeholder="e.g. ABC Logistics">
+                                <label class="form-label fw-bold">Destination Company Name</label>
+                                <input type="text"
+                                       name="dest_name"
+                                       class="form-control border-primary"
+                                       placeholder="Example: ABC Logistics">
                             </div>
+
                             <div class="col-md-8">
-                                <label class="form-label">Destination City</label>
-                                <input type="text" name="dest_city" class="form-control border-primary" placeholder="City">
+                                <label class="form-label fw-bold">Destination City</label>
+                                <input type="text"
+                                       name="dest_city"
+                                       class="form-control border-primary"
+                                       placeholder="City">
                             </div>
+
                             <div class="col-md-4">
-                                <label class="form-label">Postal Code</label>
-                                <input type="text" name="dest_postal" class="form-control border-primary" placeholder="A1B 2C3">
+                                <label class="form-label fw-bold">Destination Postal Code</label>
+                                <input type="text"
+                                       name="dest_postal"
+                                       class="form-control border-primary text-uppercase"
+                                       placeholder="A1B 2C3">
                             </div>
                         </div>
                     </div>
 
-                    <h5 class="fw-bold mb-3 border-bottom pb-2">Load Details</h5>
+                    <hr>
+
+                    <h5 class="section-title">Pickup Load Details</h5>
+
                     <div class="row g-3">
                         <div class="col-md-3">
-                            <label class="form-label fw-bold">Weight</label>
-                            <input type="number" name="weight" class="form-control" min="0" placeholder="0">
+                            <label class="form-label fw-bold">Weight (lbs)</label>
+                            <input type="number"
+                                   name="weight"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0">
                         </div>
+
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Skids</label>
-                            <input type="number" name="skids" class="form-control" min="0" placeholder="0">
+                            <input type="number"
+                                   name="skids"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0">
                         </div>
+
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Bundles</label>
-                            <input type="number" name="bundles" class="form-control" min="0" placeholder="0">
+                            <input type="number"
+                                   name="bundles"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0">
                         </div>
+
                         <div class="col-md-3">
                             <label class="form-label fw-bold">Coils</label>
-                            <input type="number" name="coils" class="form-control" min="0" placeholder="0">
+                            <input type="number"
+                                   name="coils"
+                                   class="form-control"
+                                   min="0"
+                                   placeholder="0">
                         </div>
                     </div>
 
                     <div class="mt-5 d-flex gap-3">
                         <button type="submit" class="btn btn-success btn-lg flex-grow-1 fw-bold shadow-sm">
-                            SAVE STOP
+                            ADD PICKUP
                         </button>
-                        <a href="{% url 'run_sheet' %}" class="btn btn-outline-secondary btn-lg fw-bold">Cancel</a>
+
+                        <a href="{% url 'run_sheet' %}" class="btn btn-outline-secondary btn-lg fw-bold">
+                            Cancel
+                        </a>
                     </div>
                 </form>
             </div>
@@ -95,17 +232,21 @@
 </div>
 
 <script>
-    // Show/Hide Redirect Logic
-    document.getElementById('redirectToggle').addEventListener('change', function() {
-        const section = document.getElementById('deliverySection');
-        section.style.display = this.checked ? 'block' : 'none';
+    const redirectToggle = document.getElementById('redirectToggle');
+    const deliverySection = document.getElementById('deliverySection');
 
-        // Set required fields for the destination if toggled on
-        const destName = document.querySelector('input[name="dest_name"]');
-        const destCity = document.querySelector('input[name="dest_city"]');
+    if (redirectToggle) {
+        redirectToggle.addEventListener('change', function() {
+            deliverySection.style.display = this.checked ? 'block' : 'none';
 
-        destName.required = this.checked;
-        destCity.required = this.checked;
-    });
+            const destName = document.querySelector('input[name="dest_name"]');
+            const destCity = document.querySelector('input[name="dest_city"]');
+
+            if (destName && destCity) {
+                destName.required = this.checked;
+                destCity.required = this.checked;
+            }
+        });
+    }
 </script>
 {% endblock %}

@@ -1,14 +1,36 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
+    <div class="col-md-7">
         <div class="card shadow border-0">
             <div class="card-header bg-primary text-white py-3">
-                <h4 class="mb-0 fw-bold"><i class="bi bi-camera-fill me-2"></i>Log Container Photos</h4>
+                <h4 class="mb-0 fw-bold">
+                    <i class="bi bi-camera-fill me-2"></i>Log Container Photos
+                </h4>
             </div>
+
             <div class="card-body p-4">
                 <form method="post" enctype="multipart/form-data">
                     {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Date Unloaded</label>
+                        <input type="date"
+                               name="date_received"
+                               class="form-control form-control-lg"
+                               value="{{ today|date:'Y-m-d' }}"
+                               required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Unloaded By</label>
+                        <input type="text"
+                               name="unloaded_by"
+                               class="form-control form-control-lg"
+                               placeholder="Employee name"
+                               required>
+                    </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Container Number</label>
@@ -18,7 +40,9 @@
                                placeholder="e.g. MSKU-1234567"
                                value="{{ prefill_num }}"
                                required>
-                        <small class="text-muted">If the container exists, photos will be added to its gallery.</small>
+                        <small class="text-muted">
+                            If the container exists for this date, photos will be added to its gallery.
+                        </small>
                     </div>
 
                     <div class="mb-4">
@@ -48,4 +72,32 @@
         </div>
     </div>
 </div>
+<style>
+    @media (max-width: 576px) {
+        .card {
+            border-radius: 16px;
+        }
+
+        .card-header h4 {
+            font-size: 1.15rem;
+        }
+
+        .card-body {
+            padding: 1.25rem !important;
+        }
+
+        .form-control-lg {
+            font-size: 1rem;
+            padding: 0.85rem;
+        }
+
+        .d-flex.gap-2.mt-4 {
+            flex-direction: column;
+        }
+
+        .d-flex.gap-2.mt-4 .btn {
+            width: 100%;
+        }
+    }
+</style>
 {% endblock %}
