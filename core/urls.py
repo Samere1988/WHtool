@@ -17,7 +17,7 @@ urlpatterns = [
     path('delete-stop/<int:pk>/', views.delete_stop, name='delete_stop'),
     path('finalize/', views.finalize_run_sheet, name='finalize_run_sheet'),
     path('export-excel/', views.export_run_sheet_excel, name='export_run_sheet_excel'),
-    path('upload/', views.upload_run_sheet, name='upload_run_sheet'),
+    path('upload/', transport_import_views.upload_transport_import, name='upload_run_sheet'),
     path('clear-sheet/', views.clear_run_sheet, name='clear_run_sheet'),
     path('commit-day/', views.commit_and_clear_day, name='commit_and_clear_day'),
 
