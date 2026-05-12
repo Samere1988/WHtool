@@ -126,6 +126,34 @@ def ids_from_cell(value):
     return [int(x) for x in re.findall(r"\d+", text)]
 
 
+def customer_code_from_cell(value):
+    if value in (None, ""):
+        return ""
+    return str(value).strip()
+
+
+def get_customer_code_column(block):
+    # New exports should use customer_code_col. Old exports still use hidden_ids_col.
+    return block.get("customer_code_col") or block.get("hidden_ids_col")
+
+
+def grouped_ids_for_order(order, candidates):
+    key = stop_group_key(order)
+    return [o.id for o in candidates if stop_group_key(o) == key]
+
+
+def row_matches_order_visible_text(row_data, order, minimum_score=0.58):
+    imported_name = row_data.get("imported_customer_name") or ""
+    imported_city = row_data.get("imported_city") or ""
+
+    # If the row only contains metadata and no visible customer text, allow metadata matching.
+    if not imported_name and not imported_city:
+        return True, 1.0
+
+    score = score_match(imported_name, imported_city, order)
+    return score >= minimum_score, score
+
+
 def parse_website_export(file_obj):
     wb = load_workbook(file_obj, data_only=True)
     parsed_rows = []
@@ -135,15 +163,18 @@ def parse_website_export(file_obj):
             raw_driver = ws[block["driver_cell"]].value or ""
             driver = clean_driver_name(raw_driver)
             start_time = detect_start_time(ws, block)
+            metadata_col = get_customer_code_column(block)
             stop_no = 1
 
             for row_num in range(block["start_row"], block["end_row"] + 1):
                 start_col = block["start_col"]
                 customer_name = ws.cell(row=row_num, column=start_col).value
                 city = ws.cell(row=row_num, column=start_col + 1).value
-                hidden_ids = ids_from_cell(ws.cell(row=row_num, column=block["hidden_ids_col"]).value)
+                metadata_value = ws.cell(row=row_num, column=metadata_col).value if metadata_col else None
+                hidden_ids = ids_from_cell(metadata_value)
+                customer_code = customer_code_from_cell(metadata_value)
 
-                if not customer_name and not city and not hidden_ids:
+                if not customer_name and not city and not hidden_ids and not customer_code:
                     continue
 
                 parsed_rows.append({
@@ -157,6 +188,7 @@ def parse_website_export(file_obj):
                     "imported_customer_name": str(customer_name or "").strip(),
                     "imported_city": str(city or "").strip(),
                     "hidden_ids": hidden_ids,
+                    "customer_code": customer_code,
                 })
                 stop_no += 1
 
@@ -164,20 +196,43 @@ def parse_website_export(file_obj):
 
 
 def auto_match_row(row_data, shipping_date):
-    hidden_ids = row_data.get("hidden_ids") or []
-    if hidden_ids:
-        valid_ids = list(
-            RunSheet.objects.filter(id__in=hidden_ids, shipping_date=shipping_date)
-            .values_list("id", flat=True)
-        )
-        if valid_ids:
-            return valid_ids, 1.0, "matched"
-
     imported_name = row_data.get("imported_customer_name") or ""
     imported_city = row_data.get("imported_city") or ""
-
     candidates = RunSheet.objects.filter(shipping_date=shipping_date)
-    if not candidates.exists() or not imported_name:
+
+    if not candidates.exists():
+        return [], 0, "unmatched"
+
+    customer_code = (row_data.get("customer_code") or "").strip()
+    if customer_code:
+        code_candidates = candidates.filter(customer_id=customer_code).order_by("load_index", "id")
+        if code_candidates.exists():
+            best_order = None
+            best_score = 0
+            for order in code_candidates:
+                visible_match, score = row_matches_order_visible_text(row_data, order, minimum_score=0.58)
+                if visible_match and score >= best_score:
+                    best_order = order
+                    best_score = score
+
+            if best_order:
+                return grouped_ids_for_order(best_order, candidates), max(best_score, 0.95), "matched"
+
+    # Backwards compatibility for older Excel exports that still contain RunSheet row IDs.
+    # Do not blindly trust these IDs: if a hidden ID stayed behind during copy/paste,
+    # the visible customer text will not match and we should fall back to fuzzy matching instead.
+    hidden_ids = row_data.get("hidden_ids") or []
+    if hidden_ids:
+        valid_orders = list(candidates.filter(id__in=hidden_ids))
+        if valid_orders:
+            visible_matches = [
+                row_matches_order_visible_text(row_data, order, minimum_score=0.82)[0]
+                for order in valid_orders
+            ]
+            if all(visible_matches):
+                return [order.id for order in valid_orders], 1.0, "matched"
+
+    if not imported_name:
         return [], 0, "unmatched"
 
     best_order = None
@@ -191,8 +246,7 @@ def auto_match_row(row_data, shipping_date):
     if not best_order:
         return [], 0, "unmatched"
 
-    key = stop_group_key(best_order)
-    matched_ids = [o.id for o in candidates if stop_group_key(o) == key]
+    matched_ids = grouped_ids_for_order(best_order, candidates)
     status = "matched" if best_score >= 0.82 else "review" if best_score >= 0.58 else "unmatched"
     return matched_ids, best_score, status
 
