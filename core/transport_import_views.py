@@ -137,6 +137,11 @@ def get_customer_code_column(block):
     return block.get("customer_code_col") or block.get("hidden_ids_col")
 
 
+def block_has_visible_code_column(ws, block):
+    header_value = ws.cell(row=block["header_row"], column=block["start_col"]).value
+    return str(header_value or "").strip().lower() in {"code", "customer code", "customer id", "customer #"}
+
+
 def grouped_ids_for_order(order, candidates):
     key = stop_group_key(order)
     return [o.id for o in candidates if stop_group_key(o) == key]
@@ -164,15 +169,24 @@ def parse_website_export(file_obj):
             driver = clean_driver_name(raw_driver)
             start_time = detect_start_time(ws, block)
             metadata_col = get_customer_code_column(block)
+            has_visible_code = block_has_visible_code_column(ws, block)
             stop_no = 1
 
             for row_num in range(block["start_row"], block["end_row"] + 1):
                 start_col = block["start_col"]
-                customer_name = ws.cell(row=row_num, column=start_col).value
-                city = ws.cell(row=row_num, column=start_col + 1).value
+
+                if has_visible_code:
+                    visible_customer_code = ws.cell(row=row_num, column=start_col).value
+                    customer_name = ws.cell(row=row_num, column=start_col + 1).value
+                    city = ws.cell(row=row_num, column=start_col + 2).value
+                else:
+                    visible_customer_code = None
+                    customer_name = ws.cell(row=row_num, column=start_col).value
+                    city = ws.cell(row=row_num, column=start_col + 1).value
+
                 metadata_value = ws.cell(row=row_num, column=metadata_col).value if metadata_col else None
-                hidden_ids = ids_from_cell(metadata_value)
-                customer_code = customer_code_from_cell(metadata_value)
+                hidden_ids = [] if has_visible_code else ids_from_cell(metadata_value)
+                customer_code = customer_code_from_cell(visible_customer_code) or customer_code_from_cell(metadata_value)
 
                 if not customer_name and not city and not hidden_ids and not customer_code:
                     continue
