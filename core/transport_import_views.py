@@ -8,18 +8,19 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.utils.dateparse import parse_date
 
 from openpyxl import load_workbook
 
 from .models import RunSheet, TransportImportBatch, TransportImportRow, TransportImportPreviousState
-from .views import TRANSPORT_REGION_BLOCKS, TRANSPORT_REGIONS, get_selected_shipping_date, redirect_run_sheet_for_date
+from .views import TRANSPORT_REGION_BLOCKS, get_selected_shipping_date, redirect_run_sheet_for_date
 
 
 LEGAL_WORDS = {
     "INC", "INCORPORATED", "LTD", "LTEE", "LTÉE", "LIMITED", "CORP", "CORPORATION",
     "CO", "COMPANY", "THE", "LES", "LE", "LA", "DES", "DE", "DU", "DISTRIBUTION",
 }
+
+TIME_RE = re.compile(r"\b(?:[01]?\d|2[0-3])[:hH][0-5]\d\b|\b(?:[1-9]|1[0-2])\s*(?:AM|PM|A\.M\.|P\.M\.)\b", re.I)
 
 
 def clean_match_text(value):
@@ -30,6 +31,41 @@ def clean_match_text(value):
     text = re.sub(r"[^A-Z0-9 ]+", " ", text)
     parts = [p for p in text.split() if p not in LEGAL_WORDS]
     return " ".join(parts)
+
+
+def extract_time(value):
+    if value is None:
+        return ""
+    text = str(value).strip()
+    match = TIME_RE.search(text)
+    return match.group(0).replace("h", ":").replace("H", ":") if match else ""
+
+
+def clean_driver_name(value):
+    if value is None:
+        return ""
+    text = str(value).strip()
+    text = TIME_RE.sub("", text)
+    text = re.sub(r"\b(start|time|départ|depart|driver|chauffeur)\b", "", text, flags=re.I)
+    text = re.sub(r"[:\-–—]+", " ", text)
+    return " ".join(text.split()).strip()
+
+
+def detect_start_time(ws, block):
+    cells_to_check = []
+    driver_cell = ws[block["driver_cell"]]
+    cells_to_check.append(driver_cell.value)
+
+    # Check a few cells near the region/driver header. Transport may type start time beside or below driver name.
+    for row in range(max(1, driver_cell.row - 1), driver_cell.row + 3):
+        for col in range(max(1, driver_cell.column - 1), driver_cell.column + 5):
+            cells_to_check.append(ws.cell(row=row, column=col).value)
+
+    for value in cells_to_check:
+        found = extract_time(value)
+        if found:
+            return found
+    return ""
 
 
 def score_match(imported_name, imported_city, order):
@@ -64,9 +100,6 @@ def build_current_stop_options(shipping_date):
             grouped[key] = {
                 "ids": [],
                 "label": f"{order.customer_name or ''} — {order.city or ''} — {order.region or ''}",
-                "customer_name": order.customer_name or "",
-                "city": order.city or "",
-                "region": order.region or "",
                 "order_numbers": [],
             }
         grouped[key]["ids"].append(str(order.id))
@@ -97,7 +130,9 @@ def parse_website_export(file_obj):
 
     for ws in wb.worksheets:
         for region, block in TRANSPORT_REGION_BLOCKS.items():
-            driver = ws[block["driver_cell"]].value or ""
+            raw_driver = ws[block["driver_cell"]].value or ""
+            driver = clean_driver_name(raw_driver)
+            start_time = detect_start_time(ws, block)
             stop_no = 1
 
             for row_num in range(block["start_row"], block["end_row"] + 1):
@@ -106,7 +141,6 @@ def parse_website_export(file_obj):
                 city = ws.cell(row=row_num, column=start_col + 1).value
                 hidden_ids = ids_from_cell(ws.cell(row=row_num, column=block["hidden_ids_col"]).value)
 
-                # Ignore empty rows.
                 if not customer_name and not city and not hidden_ids:
                     continue
 
@@ -114,8 +148,9 @@ def parse_website_export(file_obj):
                     "sheet_name": ws.title,
                     "source_row_number": row_num,
                     "imported_run_name": region,
-                    "imported_driver": str(driver).strip(),
+                    "imported_driver": driver,
                     "imported_truck": "",
+                    "imported_start_time": start_time,
                     "imported_stop_number": stop_no,
                     "imported_customer_name": str(customer_name or "").strip(),
                     "imported_city": str(city or "").strip(),
@@ -205,6 +240,7 @@ def upload_transport_import(request):
             imported_run_name=row_data["imported_run_name"],
             imported_driver=row_data["imported_driver"],
             imported_truck=row_data["imported_truck"],
+            imported_start_time=row_data["imported_start_time"],
             imported_stop_number=row_data["imported_stop_number"],
             imported_customer_name=row_data["imported_customer_name"],
             imported_city=row_data["imported_city"],
@@ -273,6 +309,7 @@ def apply_transport_import(request, batch_id):
                         previous_transport_run_name=run_item.transport_run_name,
                         previous_transport_driver=run_item.transport_driver,
                         previous_transport_truck=run_item.transport_truck,
+                        previous_transport_start_time=run_item.transport_start_time,
                         previous_transport_stop_number=run_item.transport_stop_number,
                         previous_transport_import_batch_id=run_item.transport_import_batch_id,
                         previous_driver_name=run_item.driver_name,
@@ -283,13 +320,14 @@ def apply_transport_import(request, batch_id):
                 run_item.transport_run_name = row.imported_run_name or run_item.region or "Transport Run"
                 run_item.transport_driver = row.imported_driver or ""
                 run_item.transport_truck = row.imported_truck or ""
+                run_item.transport_start_time = row.imported_start_time or ""
                 run_item.transport_stop_number = row.imported_stop_number or row.sort_order
                 run_item.transport_import_batch = batch
                 if row.imported_driver:
                     run_item.driver_name = row.imported_driver
                 run_item.load_index = row.imported_stop_number or row.sort_order
                 run_item.save(update_fields=[
-                    "transport_run_name", "transport_driver", "transport_truck",
+                    "transport_run_name", "transport_driver", "transport_truck", "transport_start_time",
                     "transport_stop_number", "transport_import_batch", "driver_name", "load_index",
                 ])
 
@@ -319,6 +357,7 @@ def undo_transport_import(request, batch_id):
                 transport_run_name=state.previous_transport_run_name,
                 transport_driver=state.previous_transport_driver,
                 transport_truck=state.previous_transport_truck,
+                transport_start_time=state.previous_transport_start_time,
                 transport_stop_number=state.previous_transport_stop_number,
                 transport_import_batch_id=state.previous_transport_import_batch_id,
                 driver_name=state.previous_driver_name,
@@ -359,21 +398,63 @@ def transport_run_sheet_view(request, batch_id=None):
         messages.warning(request, "No applied transport import exists for this shipping date yet.")
         return redirect_run_sheet_for_date(selected_shipping_date)
 
+    if request.method == "POST":
+        original_run_name = request.POST.get("original_run_name", "").strip()
+        original_driver = request.POST.get("original_driver", "").strip()
+        original_start_time = request.POST.get("original_start_time", "").strip()
+        new_driver = request.POST.get("transport_driver", "").strip()
+        new_start_time = request.POST.get("transport_start_time", "").strip()
+
+        run_orders = RunSheet.objects.filter(
+            shipping_date=batch.shipping_date,
+            transport_import_batch=batch,
+            transport_run_name=original_run_name,
+            transport_driver=original_driver,
+            transport_start_time=original_start_time,
+        )
+
+        updated = run_orders.update(
+            transport_driver=new_driver,
+            transport_start_time=new_start_time,
+            driver_name=new_driver,
+        )
+
+        messages.success(request, f"Updated driver/start time for {updated} rows.")
+        return redirect("transport_run_sheet_view", batch_id=batch.id)
+
     orders = RunSheet.objects.filter(
         shipping_date=batch.shipping_date,
         transport_import_batch=batch,
-    ).order_by("transport_run_name", "transport_driver", "transport_stop_number", "customer_name", "order_number", "id")
+    ).order_by("transport_run_name", "transport_driver", "transport_start_time", "transport_stop_number", "customer_name", "order_number", "id")
 
-    grouped = defaultdict(lambda: {"orders": [], "totals": {"weight": 0, "skids": 0, "bundles": 0, "coils": 0}})
+    grouped = defaultdict(lambda: {
+        "orders": [],
+        "transport_run_name": "",
+        "transport_driver": "",
+        "transport_start_time": "",
+        "totals": {"weight": 0, "skids": 0, "bundles": 0, "coils": 0},
+    })
+
     for order in orders:
-        run_label = order.transport_run_name or order.region or "Transport Run"
-        if order.transport_driver:
-            run_label = f"{run_label} — {order.transport_driver}"
-        grouped[run_label]["orders"].append(order)
-        grouped[run_label]["totals"]["weight"] += order.weight or 0
-        grouped[run_label]["totals"]["skids"] += order.skids or 0
-        grouped[run_label]["totals"]["bundles"] += order.bundles or 0
-        grouped[run_label]["totals"]["coils"] += order.coils or 0
+        run_name = order.transport_run_name or order.region or "Transport Run"
+        driver = order.transport_driver or ""
+        start_time = order.transport_start_time or ""
+        group_key = f"{run_name}|{driver}|{start_time}"
+        run_label = run_name
+        if driver:
+            run_label = f"{run_label} — {driver}"
+        if start_time:
+            run_label = f"{run_label} @ {start_time}"
+
+        grouped[group_key]["label"] = run_label
+        grouped[group_key]["transport_run_name"] = run_name
+        grouped[group_key]["transport_driver"] = driver
+        grouped[group_key]["transport_start_time"] = start_time
+        grouped[group_key]["orders"].append(order)
+        grouped[group_key]["totals"]["weight"] += order.weight or 0
+        grouped[group_key]["totals"]["skids"] += order.skids or 0
+        grouped[group_key]["totals"]["bundles"] += order.bundles or 0
+        grouped[group_key]["totals"]["coils"] += order.coils or 0
 
     return render(request, "core/transport_run_sheet.html", {
         "batch": batch,
