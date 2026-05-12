@@ -9,6 +9,9 @@
     .customer-text { font-size: 1.15rem; font-weight: 800; }
     .stop-badge { font-size: 1rem; }
     .driver-edit-box { background: #f8f9fa; border-bottom: 1px solid #dee2e6; }
+    .grouped-order-row { background: #f8f9fa; }
+    .grouped-order-inner { border-left: 4px solid #0d6efd; background: #fff; border-radius: .75rem; overflow: hidden; }
+    .multiple-orders-btn { font-size: .8rem; padding: .25rem .6rem; border-radius: 999px; }
 </style>
 
 {% if messages %}
@@ -24,20 +27,17 @@
 
 <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4 mt-2">
     <div>
-        <h2 class="fw-bold mb-1"><i class="bi bi-truck me-2"></i>Transport Run View</h2>
+        <h2 class="fw-bold mb-1"><i class="bi bi-truck me-2"></i>Transport Run Preview</h2>
         <div class="text-muted">
             {{ batch.original_filename }} · {{ selected_shipping_date|date:'l F j, Y' }} · Batch #{{ batch.id }}
+        </div>
+        <div class="small text-muted mt-1">
+            Review the imported transport order below. Click <strong>Save Run Sheet</strong> to overwrite the main run sheet order.
         </div>
     </div>
 
     <div class="d-flex gap-2 flex-wrap">
-        <a href="{% url 'run_sheet' %}?shipping_date={{ selected_shipping_date|date:'Y-m-d' }}" class="btn btn-outline-secondary fw-bold">
-            Region View
-        </a>
-        <a href="{% url 'transport_import_history' %}?shipping_date={{ selected_shipping_date|date:'Y-m-d' }}" class="btn btn-outline-dark fw-bold">
-            Import History
-        </a>
-        {% if batch.status == 'applied' %}
+        {% if batch.status == 'applied' or batch.status == 'review' %}
         <form method="post" action="{% url 'undo_transport_import' batch.id %}" class="d-inline">
             {% csrf_token %}
             <button type="submit" class="btn btn-danger fw-bold"
@@ -46,6 +46,14 @@
             </button>
         </form>
         {% endif %}
+
+        <form method="post" action="{% url 'save_transport_import_to_run_sheet' batch.id %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success fw-bold"
+                    onclick="return confirm('Save this transport order to the main run sheet?')">
+                <i class="bi bi-check-circle me-1"></i> Save Run Sheet
+            </button>
+        </form>
     </div>
 </div>
 
@@ -94,35 +102,90 @@
                     <thead class="table-light">
                         <tr>
                             <th class="text-center" style="width: 8%;">Stop</th>
-                            <th style="width: 32%;">Customer / Vendor</th>
+                            <th style="width: 36%;">Customer / Vendor</th>
                             <th style="width: 12%;">Ref</th>
                             <th class="text-center" style="width: 12%;">Weight</th>
-                            <th class="text-center" style="width: 24%;">Load</th>
-                            <th class="text-center" style="width: 12%;">Close</th>
+                            <th class="text-center" style="width: 22%;">Load</th>
+                            <th class="text-center" style="width: 10%;">Close</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for order in data.orders %}
+                        {% for stop in data.stops %}
                         <tr>
                             <td class="text-center">
-                                <span class="badge bg-primary stop-badge">{{ order.transport_stop_number|default:order.load_index }}</span>
+                                <span class="badge bg-primary stop-badge">{{ stop.transport_stop_number }}</span>
                             </td>
                             <td>
-                                {% if order.is_return %}<span class="badge bg-warning text-dark">RETURN</span>{% endif %}
-                                {% if order.is_pickup %}<span class="badge bg-success">PICKUP</span>{% endif %}
-                                <div class="customer-text">{{ order.customer_name }}</div>
-                                <div class="text-muted small"><i class="bi bi-geo-alt me-1"></i>{{ order.city }} · {{ order.region }}</div>
+                                {% if stop.is_return %}<span class="badge bg-warning text-dark">RETURN</span>{% endif %}
+                                {% if stop.is_pickup %}<span class="badge bg-success">PICKUP</span>{% endif %}
+                                <div class="customer-text">{{ stop.customer_name }}</div>
+                                <div class="text-muted small"><i class="bi bi-geo-alt me-1"></i>{{ stop.city }} · {{ stop.region }}</div>
+
+                                {% if stop.orders|length > 1 %}
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-dark fw-bold multiple-orders-btn"
+                                            type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#transport-orders-{{ stop.main_order.id }}"
+                                            aria-expanded="false"
+                                            aria-controls="transport-orders-{{ stop.main_order.id }}">
+                                        <i class="bi bi-list-ul me-1"></i>
+                                        View {{ stop.orders|length }} Orders
+                                    </button>
+                                </div>
+                                {% endif %}
                             </td>
-                            <td class="fw-bold text-primary">{{ order.order_number }}</td>
-                            <td class="text-center fw-bold">{{ order.weight }}</td>
+                            <td>
+                                {% if stop.orders|length > 1 %}
+                                    <span class="badge bg-primary">{{ stop.orders|length }} ORDERS</span>
+                                {% else %}
+                                    <span class="fw-bold text-primary">{{ stop.main_order.order_number }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center fw-bold">{{ stop.weight }}</td>
                             <td class="text-center fw-bold">
-                                {% if order.skids %}{{ order.skids }} skid{{ order.skids|pluralize }}{% endif %}
-                                {% if order.bundles %}{% if order.skids %}, {% endif %}{{ order.bundles }} bundle{{ order.bundles|pluralize }}{% endif %}
-                                {% if order.coils %}{% if order.skids or order.bundles %}, {% endif %}{{ order.coils }} coil{{ order.coils|pluralize }}{% endif %}
-                                {% if not order.skids and not order.bundles and not order.coils %}<span class="text-muted fw-normal">N/A</span>{% endif %}
+                                {% if stop.skids %}{{ stop.skids }} skid{{ stop.skids|pluralize }}{% endif %}
+                                {% if stop.bundles %}{% if stop.skids %}, {% endif %}{{ stop.bundles }} bundle{{ stop.bundles|pluralize }}{% endif %}
+                                {% if stop.coils %}{% if stop.skids or stop.bundles %}, {% endif %}{{ stop.coils }} coil{{ stop.coils|pluralize }}{% endif %}
+                                {% if not stop.skids and not stop.bundles and not stop.coils %}<span class="text-muted fw-normal">N/A</span>{% endif %}
                             </td>
-                            <td class="text-center">{{ order.closing_time }}</td>
+                            <td class="text-center">{{ stop.closing_time }}</td>
                         </tr>
+
+                        {% if stop.orders|length > 1 %}
+                        <tr class="collapse grouped-order-row" id="transport-orders-{{ stop.main_order.id }}">
+                            <td colspan="6" class="p-3">
+                                <div class="grouped-order-inner shadow-sm">
+                                    <table class="table table-sm table-bordered mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Order #</th>
+                                                <th class="text-center">Weight</th>
+                                                <th class="text-center">Skids</th>
+                                                <th class="text-center">Bundles</th>
+                                                <th class="text-center">Coils</th>
+                                                <th>Prepared By</th>
+                                                <th>Closing Time</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for order in stop.orders %}
+                                            <tr>
+                                                <td class="fw-bold text-primary">{{ order.order_number }}</td>
+                                                <td class="text-center">{{ order.weight }}</td>
+                                                <td class="text-center">{{ order.skids }}</td>
+                                                <td class="text-center">{{ order.bundles }}</td>
+                                                <td class="text-center">{{ order.coils }}</td>
+                                                <td>{{ order.prepared_by }}</td>
+                                                <td>{{ order.closing_time }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
