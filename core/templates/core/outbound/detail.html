@@ -49,10 +49,21 @@
         width: var(--modal-zoom-width, 100%);
         max-width: none !important;
         height: auto;
-        flex-shrink: 0; /* Prevents Windows browsers from capping at 100% */
+        flex-shrink: 0;
         transition: width 0.1s ease-out;
     }
 </style>
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -64,6 +75,10 @@
     </div>
 
     <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-primary shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editLoadModal">
+            <i class="bi bi-pencil-square me-1"></i>Edit Info
+        </button>
+
         <form action="{% url 'delete_outbound_load' load.pk %}" method="POST" onsubmit="return confirm('WARNING: This will permanently delete this truck load and ALL associated photos. Proceed?');">
             {% csrf_token %}
             <button type="submit" class="btn btn-outline-danger shadow-sm">
@@ -109,6 +124,28 @@
         <p>No photos found for this load.</p>
     </div>
     {% endfor %}
+</div>
+
+<div class="modal fade" id="editLoadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form method="post" action="{% url 'edit_outbound_load' load.pk %}">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Edit Outbound Load</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <label class="form-label fw-bold">Truck / Load Name</label>
+                    <input type="text" name="truck_name" class="form-control form-control-lg" value="{{ load.truck_name }}" required>
+                </div>
+                <div class="modal-footer border-0 pb-4">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-bold">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
