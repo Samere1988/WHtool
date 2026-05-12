@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block container_type %}container-fluid px-4{% endblock %}
+
+{% block content %}
+<style>
+    .review-card { border: none; box-shadow: 0 4px 18px rgba(0,0,0,.12); }
+    .status-pill { font-size: .78rem; letter-spacing: .04em; }
+    .match-select { min-width: 360px; }
+    .source-text { font-size: 1.05rem; font-weight: 800; }
+    .tiny-muted { font-size: .82rem; color: #6c757d; }
+</style>
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4 mt-2">
+    <div>
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-clipboard-check me-2"></i>Review Transport Import
+        </h2>
+        <div class="text-muted">
+            {{ batch.original_filename }} · Shipping Date: {{ batch.shipping_date|date:'l F j, Y' }}
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'run_sheet' %}?shipping_date={{ batch.shipping_date|date:'Y-m-d' }}" class="btn btn-outline-secondary fw-bold">
+            Back to Run Sheet
+        </a>
+        <a href="{% url 'transport_import_history' %}?shipping_date={{ batch.shipping_date|date:'Y-m-d' }}" class="btn btn-outline-dark fw-bold">
+            Import History
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card review-card p-3">
+            <div class="text-muted small fw-bold">MATCHED</div>
+            <div class="display-6 fw-bold text-success">{{ matched_count }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card review-card p-3">
+            <div class="text-muted small fw-bold">NEEDS REVIEW</div>
+            <div class="display-6 fw-bold text-warning">{{ review_count }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card review-card p-3">
+            <div class="text-muted small fw-bold">UNMATCHED</div>
+            <div class="display-6 fw-bold text-danger">{{ unmatched_count }}</div>
+        </div>
+    </div>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="card review-card overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 7%;">Stop</th>
+                        <th style="width: 22%;">Imported Stop</th>
+                        <th style="width: 18%;">Run / Driver</th>
+                        <th style="width: 10%;">Confidence</th>
+                        <th style="width: 43%;">Match to Existing Run Sheet Stop</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td class="fw-bold text-primary">#{{ row.imported_stop_number }}</td>
+                        <td>
+                            <div class="source-text">{{ row.imported_customer_name|default:"Unknown" }}</div>
+                            <div class="tiny-muted"><i class="bi bi-geo-alt me-1"></i>{{ row.imported_city }}</div>
+                            <div class="tiny-muted">Sheet {{ row.source_sheet_name }}, row {{ row.source_row_number }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-bold">{{ row.imported_run_name }}</div>
+                            <div class="tiny-muted">{{ row.imported_driver|default:"No driver listed" }}</div>
+                        </td>
+                        <td>
+                            {% if row.status == 'matched' %}
+                                <span class="badge bg-success status-pill">MATCHED</span>
+                            {% elif row.status == 'review' %}
+                                <span class="badge bg-warning text-dark status-pill">REVIEW</span>
+                            {% else %}
+                                <span class="badge bg-danger status-pill">UNMATCHED</span>
+                            {% endif %}
+                            <div class="tiny-muted mt-1">{{ row.confidence|floatformat:2 }}</div>
+                        </td>
+                        <td>
+                            <select name="match_{{ row.id }}" class="form-select match-select">
+                                <option value="">-- No match / skip this row --</option>
+                                {% for option in options %}
+                                    <option value="{{ option.value }}" {% if option.value == row.matched_run_sheet_ids %}selected{% endif %}>
+                                        {{ option.label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-5 flex-wrap gap-2">
+        <div class="alert alert-info mb-0">
+            This will only update transport ordering fields. It will not overwrite customer details, weights, skids, bundles, coils, or addresses.
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" name="apply_now" value="0" class="btn btn-outline-primary fw-bold px-4">
+                Save Matches
+            </button>
+            <button type="submit" name="apply_now" value="1" class="btn btn-success fw-bold px-4"
+                    onclick="return confirm('Apply this transport order to the selected shipping date? You can undo it later from Import History.')">
+                Apply Transport Order
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}
