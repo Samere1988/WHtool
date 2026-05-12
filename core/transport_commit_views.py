@@ -4,9 +4,14 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
-from .models import RunSheet, TransportImportBatch
-from .transport_import_views import redirect_run_sheet_for_date
+from .models import RunSheet, TransportImportBatch, TransportImportRow
+from .transport_import_views import (
+    auto_match_row,
+    parse_website_export,
+    redirect_run_sheet_for_date,
+)
 
 
 def _transport_stop_key(order):
@@ -73,6 +78,93 @@ def _group_orders_into_stops(orders):
 
 
 @login_required
+def upload_transport_preview(request):
+    """
+    Uploads the transport Excel sheet and builds a preview only.
+
+    It does not overwrite the main run sheet until the user clicks Save Run Sheet.
+    """
+    from .views import get_selected_shipping_date
+
+    if request.method != "POST":
+        return redirect_run_sheet_for_date(get_selected_shipping_date(request))
+
+    shipping_date = get_selected_shipping_date(request)
+    excel_file = request.FILES.get("excel_file")
+
+    if not excel_file:
+        messages.error(request, "Please choose an Excel file first.")
+        return redirect_run_sheet_for_date(shipping_date)
+
+    batch = TransportImportBatch.objects.create(
+        shipping_date=shipping_date,
+        original_filename=excel_file.name,
+        uploaded_by=request.user.username if request.user.is_authenticated else "",
+        status="review",
+    )
+
+    try:
+        parsed_rows = parse_website_export(excel_file)
+    except Exception as exc:
+        batch.status = "failed"
+        batch.notes = str(exc)
+        batch.save(update_fields=["status", "notes"])
+        messages.error(request, f"Could not read that Excel file: {exc}")
+        return redirect_run_sheet_for_date(shipping_date)
+
+    if not parsed_rows:
+        batch.status = "failed"
+        batch.notes = "No stops were detected in the uploaded Excel file."
+        batch.save(update_fields=["status", "notes"])
+        messages.error(request, "No stops were detected in the uploaded Excel file.")
+        return redirect_run_sheet_for_date(shipping_date)
+
+    touched_ids = set()
+
+    with transaction.atomic():
+        for sort_order, row_data in enumerate(parsed_rows, start=1):
+            matched_ids, confidence, status = auto_match_row(row_data, shipping_date)
+
+            TransportImportRow.objects.create(
+                batch=batch,
+                sort_order=sort_order,
+                source_sheet_name=row_data["sheet_name"],
+                source_row_number=row_data["source_row_number"],
+                imported_run_name=row_data["imported_run_name"],
+                imported_driver=row_data["imported_driver"],
+                imported_truck=row_data["imported_truck"],
+                imported_start_time=row_data["imported_start_time"],
+                imported_stop_number=row_data["imported_stop_number"],
+                imported_customer_name=row_data["imported_customer_name"],
+                imported_city=row_data["imported_city"],
+                matched_run_sheet_ids=",".join(str(i) for i in matched_ids),
+                confidence=confidence,
+                status=status,
+            )
+
+            # Populate preview-only transport fields so the preview page can show the imported order.
+            for run_item in RunSheet.objects.select_for_update().filter(id__in=matched_ids, shipping_date=shipping_date):
+                run_item.transport_run_name = row_data["imported_run_name"] or run_item.region or "Transport Run"
+                run_item.transport_driver = row_data["imported_driver"] or ""
+                run_item.transport_truck = row_data["imported_truck"] or ""
+                run_item.transport_start_time = row_data["imported_start_time"] or ""
+                run_item.transport_stop_number = row_data["imported_stop_number"] or sort_order
+                run_item.transport_import_batch = batch
+                run_item.save(update_fields=[
+                    "transport_run_name",
+                    "transport_driver",
+                    "transport_truck",
+                    "transport_start_time",
+                    "transport_stop_number",
+                    "transport_import_batch",
+                ])
+                touched_ids.add(run_item.id)
+
+    messages.info(request, f"Transport sheet imported for preview. {len(touched_ids)} rows matched. Review, then click Save Run Sheet.")
+    return redirect("transport_run_sheet_view", batch_id=batch.id)
+
+
+@login_required
 def transport_preview_view(request, batch_id=None):
     if batch_id:
         batch = get_object_or_404(TransportImportBatch, pk=batch_id)
@@ -107,10 +199,9 @@ def transport_preview_view(request, batch_id=None):
         ).update(
             transport_driver=new_driver,
             transport_start_time=new_start_time,
-            driver_name=new_driver,
         )
 
-        messages.success(request, f"Updated driver/start time for {updated} rows.")
+        messages.success(request, f"Updated driver/start time for {updated} preview rows.")
         return redirect("transport_run_sheet_view", batch_id=batch.id)
 
     orders = RunSheet.objects.filter(
@@ -213,7 +304,7 @@ def save_transport_import_to_run_sheet(request, batch_id):
                 updated_count += 1
 
         batch.status = "applied"
-        batch.applied_at = batch.applied_at or __import__("django.utils.timezone").utils.timezone.now()
+        batch.applied_at = batch.applied_at or timezone.now()
         batch.save(update_fields=["status", "applied_at"])
 
     messages.success(request, f"Run sheet saved. {updated_count} rows were updated.")
