@@ -21,6 +21,8 @@ LEGAL_WORDS = {
 }
 
 TIME_RE = re.compile(r"\b(?:[01]?\d|2[0-3])[:hH][0-5]\d\b|\b(?:[1-9]|1[0-2])\s*(?:AM|PM|A\.M\.|P\.M\.)\b", re.I)
+TRANSPORT_PLACEHOLDER_ORDER = "TRANSPORT IMPORT"
+TRANSPORT_PLACEHOLDER_PREPARED_BY = "Transport Import"
 
 
 def clean_match_text(value):
@@ -195,6 +197,39 @@ def auto_match_row(row_data, shipping_date):
     return matched_ids, best_score, status
 
 
+def create_unmatched_transport_placeholder(row, batch):
+    """
+    Creates a lightweight RunSheet row for a stop that exists only on the transport sheet.
+    It is clearly marked and can be removed by Undo.
+    """
+    run_name = row.imported_run_name or "Transport Run"
+    return RunSheet.objects.create(
+        customer_id="",
+        shipping_date=batch.shipping_date,
+        customer_name=row.imported_customer_name or "Unmatched Transport Stop",
+        address="",
+        city=row.imported_city or "",
+        postal_code="",
+        region=run_name,
+        order_number=TRANSPORT_PLACEHOLDER_ORDER,
+        prepared_by=TRANSPORT_PLACEHOLDER_PREPARED_BY,
+        line_items=0,
+        closing_time="",
+        weight=0,
+        skids=0,
+        bundles=0,
+        coils=0,
+        load_index=row.imported_stop_number or row.sort_order,
+        driver_name=row.imported_driver or "",
+        transport_run_name=run_name,
+        transport_driver=row.imported_driver or "",
+        transport_truck=row.imported_truck or "",
+        transport_start_time=row.imported_start_time or "",
+        transport_stop_number=row.imported_stop_number or row.sort_order,
+        transport_import_batch=batch,
+    )
+
+
 @login_required
 def upload_transport_import(request):
     if request.method != "POST":
@@ -289,18 +324,34 @@ def review_transport_import(request, batch_id):
 @login_required
 def apply_transport_import(request, batch_id):
     batch = get_object_or_404(TransportImportBatch, pk=batch_id)
-    rows = batch.rows.exclude(matched_run_sheet_ids="").order_by("sort_order", "id")
+    rows = batch.rows.all().order_by("sort_order", "id")
 
     if not rows.exists():
-        messages.error(request, "There are no matched rows to apply.")
+        messages.error(request, "There are no rows to apply.")
         return redirect("review_transport_import", batch_id=batch.id)
 
     with transaction.atomic():
         TransportImportPreviousState.objects.filter(batch=batch).delete()
+
+        # If this batch was applied before, remove its old unmatched placeholder rows before recreating them.
+        RunSheet.objects.filter(
+            transport_import_batch=batch,
+            customer_id="",
+            order_number=TRANSPORT_PLACEHOLDER_ORDER,
+            prepared_by=TRANSPORT_PLACEHOLDER_PREPARED_BY,
+        ).delete()
+
         touched_ids = set()
+        created_unmatched_count = 0
 
         for row in rows:
             ids = [int(x) for x in row.matched_run_sheet_ids.split(",") if x.strip().isdigit()]
+
+            if not ids:
+                create_unmatched_transport_placeholder(row, batch)
+                created_unmatched_count += 1
+                continue
+
             for run_item in RunSheet.objects.select_for_update().filter(id__in=ids, shipping_date=batch.shipping_date):
                 if run_item.id not in touched_ids:
                     TransportImportPreviousState.objects.create(
@@ -335,7 +386,10 @@ def apply_transport_import(request, batch_id):
         batch.applied_at = timezone.now()
         batch.save(update_fields=["status", "applied_at"])
 
-    messages.success(request, f"Transport order applied. {len(touched_ids)} run sheet rows were updated. You can undo this import if needed.")
+    messages.success(
+        request,
+        f"Transport order applied. {len(touched_ids)} existing rows were updated and {created_unmatched_count} unmatched transport stops were imported as-is. You can undo this import if needed."
+    )
     return redirect("transport_run_sheet_view", batch_id=batch.id)
 
 
@@ -347,11 +401,26 @@ def undo_transport_import(request, batch_id):
         return redirect("transport_import_history")
 
     states = TransportImportPreviousState.objects.filter(batch=batch)
-    if not states.exists():
-        messages.error(request, "No saved previous state was found for this import.")
+    placeholder_count = RunSheet.objects.filter(
+        transport_import_batch=batch,
+        customer_id="",
+        order_number=TRANSPORT_PLACEHOLDER_ORDER,
+        prepared_by=TRANSPORT_PLACEHOLDER_PREPARED_BY,
+    ).count()
+
+    if not states.exists() and placeholder_count == 0:
+        messages.error(request, "No saved previous state or imported unmatched rows were found for this import.")
         return redirect("transport_import_history")
 
     with transaction.atomic():
+        # Remove unmatched rows that were created only from the transport sheet.
+        RunSheet.objects.filter(
+            transport_import_batch=batch,
+            customer_id="",
+            order_number=TRANSPORT_PLACEHOLDER_ORDER,
+            prepared_by=TRANSPORT_PLACEHOLDER_PREPARED_BY,
+        ).delete()
+
         for state in states:
             RunSheet.objects.filter(id=state.run_sheet_id).update(
                 transport_run_name=state.previous_transport_run_name,
@@ -368,7 +437,7 @@ def undo_transport_import(request, batch_id):
         batch.undone_at = timezone.now()
         batch.save(update_fields=["status", "undone_at"])
 
-    messages.success(request, "Transport import was undone and the previous order was restored.")
+    messages.success(request, "Transport import was undone. Previous order was restored and unmatched imported stops were removed.")
     return redirect_run_sheet_for_date(batch.shipping_date)
 
 
