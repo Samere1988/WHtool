@@ -72,7 +72,7 @@ urlpatterns = [
     path('containers/<int:pk>/', views.container_detail, name='container_detail'),
     path('container/quick-add/<int:pk>/', views.upload_more_container_photos, name='upload_more_container_photos'),
     path('containers/delete/<int:pk>/', views.delete_container, name='delete_container'),
-    path('containers/photo/delete/<int:pk>/', views.delete_container_photo, name='delete_container_photo'),
+    path('containers/photo/delete/<int:photo_id>/', views.delete_container_photo, name='delete_container_photo'),
 
     # --- PICKUP PHOTOS ---
     path('pickup-photos/', views.pickup_photo_list, name='pickup_photo_list'),
