@@ -49,6 +49,7 @@ class RunSheet(models.Model):
     transport_run_name = models.CharField(max_length=100, blank=True, null=True)
     transport_driver = models.CharField(max_length=100, blank=True, null=True)
     transport_truck = models.CharField(max_length=100, blank=True, null=True)
+    transport_start_time = models.CharField(max_length=50, blank=True, null=True)
     transport_stop_number = models.IntegerField(blank=True, null=True)
     transport_import_batch = models.ForeignKey(
         "TransportImportBatch",
@@ -220,6 +221,7 @@ class TransportImportRow(models.Model):
     imported_run_name = models.CharField(max_length=100, blank=True)
     imported_driver = models.CharField(max_length=100, blank=True)
     imported_truck = models.CharField(max_length=100, blank=True)
+    imported_start_time = models.CharField(max_length=50, blank=True)
     imported_stop_number = models.IntegerField(default=0)
     imported_customer_name = models.CharField(max_length=255, blank=True)
     imported_city = models.CharField(max_length=150, blank=True)
@@ -242,6 +244,7 @@ class TransportImportPreviousState(models.Model):
     previous_transport_run_name = models.CharField(max_length=100, blank=True, null=True)
     previous_transport_driver = models.CharField(max_length=100, blank=True, null=True)
     previous_transport_truck = models.CharField(max_length=100, blank=True, null=True)
+    previous_transport_start_time = models.CharField(max_length=50, blank=True, null=True)
     previous_transport_stop_number = models.IntegerField(blank=True, null=True)
     previous_transport_import_batch_id = models.IntegerField(blank=True, null=True)
     previous_driver_name = models.CharField(max_length=100, blank=True, null=True)
