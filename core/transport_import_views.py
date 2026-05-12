@@ -352,8 +352,8 @@ def upload_transport_import(request):
             status=status,
         )
 
-    messages.info(request, "Transport sheet uploaded. Review the matches before applying the order.")
-    return redirect("review_transport_import", batch_id=batch.id)
+    messages.info(request, "Transport sheet uploaded. Applying the matched order now.")
+    return redirect("apply_transport_import", batch_id=batch.id)
 
 
 @login_required
