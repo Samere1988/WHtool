@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block container_type %}container-fluid px-4{% endblock %}
+
+{% block content %}
+<style>
+    .run-card { border: none; box-shadow: 0 4px 15px rgba(0,0,0,.12); margin-bottom: 1rem; }
+    .run-title { font-size: 1.55rem; font-weight: 900; }
+    .customer-text { font-size: 1.15rem; font-weight: 800; }
+    .stop-badge { font-size: 1rem; }
+</style>
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4 mt-2">
+    <div>
+        <h2 class="fw-bold mb-1"><i class="bi bi-truck me-2"></i>Transport Run View</h2>
+        <div class="text-muted">
+            {{ batch.original_filename }} · {{ selected_shipping_date|date:'l F j, Y' }} · Batch #{{ batch.id }}
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'run_sheet' %}?shipping_date={{ selected_shipping_date|date:'Y-m-d' }}" class="btn btn-outline-secondary fw-bold">
+            Region View
+        </a>
+        <a href="{% url 'transport_import_history' %}?shipping_date={{ selected_shipping_date|date:'Y-m-d' }}" class="btn btn-outline-dark fw-bold">
+            Import History
+        </a>
+        {% if batch.status == 'applied' %}
+        <form method="post" action="{% url 'undo_transport_import' batch.id %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger fw-bold"
+                    onclick="return confirm('Undo this transport import and restore the previous order?')">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Undo Import
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row row-cols-1 row-cols-xl-2 g-4">
+    {% for run_label, data in grouped_runs.items %}
+    <div class="col">
+        <div class="card run-card overflow-hidden">
+            <div class="card-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
+                <span class="run-title">{{ run_label }}</span>
+                <span class="badge bg-primary fs-6">{{ data.totals.weight }} LBS</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-center" style="width: 8%;">Stop</th>
+                            <th style="width: 32%;">Customer / Vendor</th>
+                            <th style="width: 12%;">Ref</th>
+                            <th class="text-center" style="width: 12%;">Weight</th>
+                            <th class="text-center" style="width: 24%;">Load</th>
+                            <th class="text-center" style="width: 12%;">Close</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in data.orders %}
+                        <tr>
+                            <td class="text-center">
+                                <span class="badge bg-primary stop-badge">{{ order.transport_stop_number|default:order.load_index }}</span>
+                            </td>
+                            <td>
+                                {% if order.is_return %}<span class="badge bg-warning text-dark">RETURN</span>{% endif %}
+                                {% if order.is_pickup %}<span class="badge bg-success">PICKUP</span>{% endif %}
+                                <div class="customer-text">{{ order.customer_name }}</div>
+                                <div class="text-muted small"><i class="bi bi-geo-alt me-1"></i>{{ order.city }} · {{ order.region }}</div>
+                            </td>
+                            <td class="fw-bold text-primary">{{ order.order_number }}</td>
+                            <td class="text-center fw-bold">{{ order.weight }}</td>
+                            <td class="text-center fw-bold">
+                                {% if order.skids %}{{ order.skids }} skid{{ order.skids|pluralize }}{% endif %}
+                                {% if order.bundles %}{% if order.skids %}, {% endif %}{{ order.bundles }} bundle{{ order.bundles|pluralize }}{% endif %}
+                                {% if order.coils %}{% if order.skids or order.bundles %}, {% endif %}{{ order.coils }} coil{{ order.coils|pluralize }}{% endif %}
+                                {% if not order.skids and not order.bundles and not order.coils %}<span class="text-muted fw-normal">N/A</span>{% endif %}
+                            </td>
+                            <td class="text-center">{{ order.closing_time }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card-footer bg-light d-flex justify-content-around py-3 border-top">
+                <span class="fw-bold text-primary">{{ data.totals.weight }} Lbs</span>
+                <span class="fw-bold">{{ data.totals.skids }} Skids</span>
+                <span class="fw-bold">{{ data.totals.bundles }} Bundles</span>
+                <span class="fw-bold">{{ data.totals.coils }} Coils</span>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="alert alert-warning">No transport-ordered rows were found for this import.</div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
