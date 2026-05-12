@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import transport_import_views
 
 urlpatterns = [
     # --- MAIN DASHBOARD & STATS ---
@@ -19,6 +20,15 @@ urlpatterns = [
     path('upload/', views.upload_run_sheet, name='upload_run_sheet'),
     path('clear-sheet/', views.clear_run_sheet, name='clear_run_sheet'),
     path('commit-day/', views.commit_and_clear_day, name='commit_and_clear_day'),
+
+    # --- SAFER TRANSPORT-COMPANY IMPORT WORKFLOW ---
+    path('transport-import/upload/', transport_import_views.upload_transport_import, name='upload_transport_import'),
+    path('transport-import/<int:batch_id>/review/', transport_import_views.review_transport_import, name='review_transport_import'),
+    path('transport-import/<int:batch_id>/apply/', transport_import_views.apply_transport_import, name='apply_transport_import'),
+    path('transport-import/<int:batch_id>/undo/', transport_import_views.undo_transport_import, name='undo_transport_import'),
+    path('transport-import/history/', transport_import_views.transport_import_history, name='transport_import_history'),
+    path('transport-view/', transport_import_views.transport_run_sheet_view, name='transport_run_sheet_view'),
+    path('transport-view/<int:batch_id>/', transport_import_views.transport_run_sheet_view, name='transport_run_sheet_view'),
 
     # --- CUSTOMER DATABASE ---
     path('customers/', views.customer_list, name='customer_list'),
