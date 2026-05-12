@@ -5,9 +5,10 @@
 {% block content %}
 <style>
     .run-card { border: none; box-shadow: 0 4px 15px rgba(0,0,0,.12); margin-bottom: 1rem; }
-    .run-title { font-size: 1.55rem; font-weight: 900; }
+    .run-title { font-size: 1.35rem; font-weight: 900; }
     .customer-text { font-size: 1.15rem; font-weight: 800; }
     .stop-badge { font-size: 1rem; }
+    .driver-edit-box { background: #f8f9fa; border-bottom: 1px solid #dee2e6; }
 </style>
 
 {% if messages %}
@@ -49,12 +50,43 @@
 </div>
 
 <div class="row row-cols-1 row-cols-xl-2 g-4">
-    {% for run_label, data in grouped_runs.items %}
+    {% for group_key, data in grouped_runs.items %}
     <div class="col">
         <div class="card run-card overflow-hidden">
-            <div class="card-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center">
-                <span class="run-title">{{ run_label }}</span>
+            <div class="card-header bg-dark text-white py-3 px-4 d-flex justify-content-between align-items-center gap-3">
+                <div>
+                    <span class="run-title">{{ data.transport_run_name }}</span>
+                    <div class="small text-white-50 mt-1">
+                        Driver: {{ data.transport_driver|default:"Not set" }}
+                        {% if data.transport_start_time %} · Start: {{ data.transport_start_time }}{% endif %}
+                    </div>
+                </div>
                 <span class="badge bg-primary fs-6">{{ data.totals.weight }} LBS</span>
+            </div>
+
+            <div class="driver-edit-box p-3">
+                <form method="post" class="row g-2 align-items-end">
+                    {% csrf_token %}
+                    <input type="hidden" name="original_run_name" value="{{ data.transport_run_name }}">
+                    <input type="hidden" name="original_driver" value="{{ data.transport_driver }}">
+                    <input type="hidden" name="original_start_time" value="{{ data.transport_start_time }}">
+
+                    <div class="col-md-5">
+                        <label class="form-label small fw-bold mb-1">Driver Name</label>
+                        <input type="text" name="transport_driver" class="form-control form-control-sm" value="{{ data.transport_driver }}" placeholder="Driver name">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold mb-1">Start Time</label>
+                        <input type="text" name="transport_start_time" class="form-control form-control-sm" value="{{ data.transport_start_time }}" placeholder="Example: 7:00">
+                    </div>
+
+                    <div class="col-md-3 d-grid">
+                        <button type="submit" class="btn btn-sm btn-primary fw-bold">
+                            Save Driver
+                        </button>
+                    </div>
+                </form>
             </div>
 
             <div class="table-responsive">
