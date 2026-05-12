@@ -19,7 +19,7 @@ class CustomerList(models.Model):
         db_table = 'Customer List'
 
     def __str__(self):
-        return f"{self.name} - {self.postal_code}"
+        return f"{self.customer_name} - {self.postal_code}"
 
 class RunSheet(models.Model):
     # Added an ID field so Django can track individual rows easily
@@ -40,14 +40,23 @@ class RunSheet(models.Model):
     closing_time = models.TextField(db_column='Closing Time', blank=True, null=True)
     is_pickup = models.BooleanField(default=False)
     is_return = models.BooleanField(default=False)
-    order_number = models.CharField(max_length=20, default="W")
-    prepared_by = models.CharField(max_length=100, blank=True, null=True)
-    line_items = models.IntegerField(default=0)
     created_at = models.DateTimeField(default=timezone.now)
     postal_code = models.CharField(max_length=20, blank=True, null=True)
     load_index = models.IntegerField(default=0)
     shipping_date = models.DateField(default=timezone.now)
 
+    # Transport-company import fields. These do not replace the original region data.
+    transport_run_name = models.CharField(max_length=100, blank=True, null=True)
+    transport_driver = models.CharField(max_length=100, blank=True, null=True)
+    transport_truck = models.CharField(max_length=100, blank=True, null=True)
+    transport_stop_number = models.IntegerField(blank=True, null=True)
+    transport_import_batch = models.ForeignKey(
+        "TransportImportBatch",
+        blank=True,
+        null=True,
+        related_name="run_sheet_items",
+        on_delete=models.SET_NULL,
+    )
 
     class Meta:
         managed = True
@@ -172,6 +181,76 @@ class EmployeeDailyStat(models.Model):
         return f"{self.employee_name} - {self.commit.shipping_date}"
 
 
+class TransportImportBatch(models.Model):
+    STATUS_CHOICES = [
+        ("review", "Review"),
+        ("applied", "Applied"),
+        ("undone", "Undone"),
+        ("failed", "Failed"),
+    ]
+
+    shipping_date = models.DateField()
+    original_filename = models.CharField(max_length=255, blank=True)
+    uploaded_by = models.CharField(max_length=150, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    applied_at = models.DateTimeField(blank=True, null=True)
+    undone_at = models.DateTimeField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="review")
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Transport import {self.id} - {self.shipping_date} - {self.status}"
+
+
+class TransportImportRow(models.Model):
+    STATUS_CHOICES = [
+        ("matched", "Matched"),
+        ("review", "Needs Review"),
+        ("unmatched", "Unmatched"),
+    ]
+
+    batch = models.ForeignKey(TransportImportBatch, related_name="rows", on_delete=models.CASCADE)
+    sort_order = models.IntegerField(default=0)
+    source_sheet_name = models.CharField(max_length=100, blank=True)
+    source_row_number = models.IntegerField(default=0)
+
+    imported_run_name = models.CharField(max_length=100, blank=True)
+    imported_driver = models.CharField(max_length=100, blank=True)
+    imported_truck = models.CharField(max_length=100, blank=True)
+    imported_stop_number = models.IntegerField(default=0)
+    imported_customer_name = models.CharField(max_length=255, blank=True)
+    imported_city = models.CharField(max_length=150, blank=True)
+
+    matched_run_sheet_ids = models.TextField(blank=True)
+    confidence = models.FloatField(default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="unmatched")
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+
+    def matched_id_list(self):
+        return [x.strip() for x in (self.matched_run_sheet_ids or "").split(",") if x.strip()]
+
+
+class TransportImportPreviousState(models.Model):
+    batch = models.ForeignKey(TransportImportBatch, related_name="previous_states", on_delete=models.CASCADE)
+    run_sheet_id = models.IntegerField()
+
+    previous_transport_run_name = models.CharField(max_length=100, blank=True, null=True)
+    previous_transport_driver = models.CharField(max_length=100, blank=True, null=True)
+    previous_transport_truck = models.CharField(max_length=100, blank=True, null=True)
+    previous_transport_stop_number = models.IntegerField(blank=True, null=True)
+    previous_transport_import_batch_id = models.IntegerField(blank=True, null=True)
+    previous_driver_name = models.CharField(max_length=100, blank=True, null=True)
+    previous_load_index = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ("batch", "run_sheet_id")
+
+
 class Container(models.Model):
     container_number = models.CharField(max_length=100)
     date_received = models.DateTimeField(auto_now_add=True)
@@ -254,4 +333,3 @@ class PickupPhoto(models.Model):
     log = models.ForeignKey(PickupPhotoLog, related_name='photos', on_delete=models.CASCADE)
     image = models.ImageField(upload_to='pickup_photos/%Y/%m/%d/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
-
