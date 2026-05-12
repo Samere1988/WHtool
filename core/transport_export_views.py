@@ -4,6 +4,8 @@ from io import BytesIO
 from django.contrib.auth.decorators import login_required
 
 from openpyxl import load_workbook
+from openpyxl.styles import Alignment
+from openpyxl.utils import get_column_letter
 
 from .models import RunSheet
 from . import views as base_views
@@ -42,10 +44,10 @@ def _copy_cell(source, target):
 def _shift_block_right_for_code_column(ws, block):
     """
     Converts a generated 9-column transport block:
-        Customer Name | City | Weight | Skids | Bundles | Coils | Closes at | Pickup | blank
+        Customer Name | City | Weight | Skids | Bundles | Coils | Closes at | Pickup | spacer
 
     into a 10-column transport block:
-        Code | Customer Name | City | Weight | Skids | Bundles | Coils | Closes at | Pickup | blank
+        Code | Customer Name | City | Weight | Skids | Bundles | Coils | Closes at | Pickup | spacer
 
     This keeps the code visible in the Excel file so it moves naturally when rows are copied/pasted.
     """
@@ -66,6 +68,80 @@ def _shift_block_right_for_code_column(ws, block):
         ws.cell(row=row_num, column=start_col).value = None
 
 
+def _clear_spacer_column(ws, block):
+    """
+    The last column in each region block is only a spacer.
+    Clear it after shifting so old IDs or copied values cannot appear there.
+    """
+    spacer_col = block["start_col"] + 9
+
+    for row_num in range(block["header_row"], block["total_row"] + 1):
+        ws.cell(row=row_num, column=spacer_col).value = None
+
+
+def _autosize_visible_transport_columns(ws):
+    """
+    Widen A:T so headers and values display instead of being cut off.
+    Keeps spacer columns J and T narrow.
+    """
+    min_widths = {
+        "A": 12,   # Code
+        "B": 24,   # Customer Name
+        "C": 16,   # City
+        "D": 12,   # Weight
+        "E": 10,   # Skids
+        "F": 11,   # Bundles
+        "G": 9,    # Coils
+        "H": 14,   # Closes at
+        "I": 10,   # Pickup
+        "J": 4,    # Spacer
+        "K": 12,   # Code
+        "L": 24,   # Customer Name
+        "M": 16,   # City
+        "N": 12,   # Weight
+        "O": 10,   # Skids
+        "P": 11,   # Bundles
+        "Q": 9,    # Coils
+        "R": 14,   # Closes at
+        "S": 10,   # Pickup
+        "T": 4,    # Spacer
+    }
+
+    max_widths = {
+        "B": 45,
+        "C": 28,
+        "L": 45,
+        "M": 28,
+    }
+
+    for col_idx in range(1, 21):  # A:T
+        col_letter = get_column_letter(col_idx)
+        max_length = 0
+
+        for cell in ws[col_letter]:
+            if cell.value is not None:
+                max_length = max(max_length, len(str(cell.value)))
+
+        calculated_width = max_length + 2
+        min_width = min_widths.get(col_letter, 10)
+        max_width = max_widths.get(col_letter, 18)
+        ws.column_dimensions[col_letter].width = min(max(calculated_width, min_width), max_width)
+
+    # Force spacer columns narrow and empty-looking.
+    ws.column_dimensions["J"].width = 4
+    ws.column_dimensions["T"].width = 4
+
+
+def _apply_readable_alignment(ws):
+    for row in ws.iter_rows(min_row=1, max_row=75, min_col=1, max_col=20):
+        for cell in row:
+            cell.alignment = Alignment(
+                horizontal=cell.alignment.horizontal or "center",
+                vertical="center",
+                wrap_text=False,
+            )
+
+
 def _write_customer_codes(workbook, shipping_date):
     """
     Calls the existing export first, then adds a visible Code column to each region block.
@@ -74,6 +150,7 @@ def _write_customer_codes(workbook, shipping_date):
     for ws in workbook.worksheets:
         for region, block in base_views.TRANSPORT_REGION_BLOCKS.items():
             _shift_block_right_for_code_column(ws, block)
+            _clear_spacer_column(ws, block)
 
             metadata_col = _metadata_col_for_block(block)
             if metadata_col:
@@ -117,9 +194,8 @@ def _write_customer_codes(workbook, shipping_date):
         ws.column_dimensions["AB"].hidden = True
         ws.print_area = "A1:T75"
 
-        # Make the visible Code columns usable without making them huge.
-        ws.column_dimensions["A"].width = max(ws.column_dimensions["A"].width or 0, 12)
-        ws.column_dimensions["K"].width = max(ws.column_dimensions["K"].width or 0, 12)
+        _autosize_visible_transport_columns(ws)
+        _apply_readable_alignment(ws)
 
 
 @login_required
