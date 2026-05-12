@@ -79,6 +79,59 @@ def _clear_spacer_column(ws, block):
         ws.cell(row=row_num, column=spacer_col).value = None
 
 
+def _remove_legacy_runsheet_metadata(workbook):
+    """
+    Remove all legacy internal RunSheet metadata from the generated workbook.
+
+    Older export code can add strings like "runsheet_id=206" as hidden values,
+    comments, hyperlinks, or data-validation prompts. The visible Code column
+    replaces that system, so these values should not be shipped to transport.
+    """
+    for ws in workbook.worksheets:
+        # Clear old hidden metadata columns and any far-right helper area.
+        for col_idx in list(range(21, 61)):  # U:BH
+            for row_idx in range(1, ws.max_row + 1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                cell.value = None
+                cell.comment = None
+                cell.hyperlink = None
+
+        # Remove any legacy runsheet_id values/comments that may be attached to visible cells.
+        for row in ws.iter_rows():
+            for cell in row:
+                if isinstance(cell.value, str) and "runsheet_id" in cell.value.lower():
+                    cell.value = None
+                if cell.comment and "runsheet_id" in str(cell.comment.text).lower():
+                    cell.comment = None
+                if cell.hyperlink and "runsheet_id" in str(cell.hyperlink.target).lower():
+                    cell.hyperlink = None
+
+        # Remove data validations that contain legacy runsheet metadata.
+        if getattr(ws, "data_validations", None):
+            kept_validations = []
+            for dv in ws.data_validations.dataValidation:
+                dv_text = " ".join(
+                    str(value or "")
+                    for value in [
+                        getattr(dv, "formula1", ""),
+                        getattr(dv, "formula2", ""),
+                        getattr(dv, "prompt", ""),
+                        getattr(dv, "promptTitle", ""),
+                        getattr(dv, "error", ""),
+                        getattr(dv, "errorTitle", ""),
+                    ]
+                ).lower()
+                if "runsheet_id" not in dv_text:
+                    kept_validations.append(dv)
+
+            ws.data_validations.dataValidation = kept_validations
+            ws.data_validations.count = len(kept_validations)
+
+        # Ensure old metadata columns remain hidden even after being cleared.
+        ws.column_dimensions["AA"].hidden = True
+        ws.column_dimensions["AB"].hidden = True
+
+
 def _autosize_visible_transport_columns(ws):
     """
     Widen A:T so headers and values display instead of being cut off.
@@ -187,6 +240,8 @@ def _write_customer_codes(workbook, shipping_date):
             ws.cell(row=total_row, column=coils_col).value = (
                 f"=SUM({ws.cell(start_row, coils_col).coordinate}:{ws.cell(end_row, coils_col).coordinate})"
             )
+
+    _remove_legacy_runsheet_metadata(workbook)
 
     for ws in workbook.worksheets:
         # Keep old metadata columns hidden/empty for backwards safety, but new matching uses visible Code.
