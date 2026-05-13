@@ -12,59 +12,60 @@
         .nav-link:hover { color: #ffffff; }
         .nav-link.active { color: #ffffff !important; }
 
-        /* Run Sheet total summary styling */
+        /* Compact Run Sheet total summary styling */
+        .row.g-3.mb-4:has(.daily-total-card) {
+            max-width: 860px;
+            margin-left: auto !important;
+            margin-right: 0 !important;
+            margin-top: 0.25rem !important;
+            margin-bottom: 1.25rem !important;
+            align-items: stretch;
+        }
+
         .daily-total-card {
             position: relative !important;
             overflow: hidden !important;
-            border: 0 !important;
-            border-radius: 1.25rem !important;
-            padding: 1.1rem 1.25rem !important;
-            min-height: 112px !important;
-            color: #ffffff !important;
-            background: linear-gradient(135deg, #0d2c54 0%, #174f91 100%) !important;
-            box-shadow: 0 12px 28px rgba(13, 44, 84, 0.22) !important;
+            border: 1px solid rgba(13, 44, 84, 0.12) !important;
+            border-radius: 0.85rem !important;
+            padding: 0.65rem 0.85rem !important;
+            min-height: 72px !important;
+            color: #0f172a !important;
+            background: #ffffff !important;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.10) !important;
         }
 
         .daily-total-card::after {
             content: "";
             position: absolute;
-            right: -34px;
-            top: -34px;
-            width: 115px;
-            height: 115px;
+            right: -28px;
+            top: -32px;
+            width: 82px;
+            height: 82px;
             border-radius: 999px;
-            background: rgba(255,255,255,0.11);
+            background: rgba(13, 110, 253, 0.08);
         }
 
         .daily-total-card .text-muted,
         .daily-total-card .small {
-            color: rgba(255,255,255,0.78) !important;
-            letter-spacing: .07em;
+            color: #64748b !important;
+            letter-spacing: .045em;
+            font-size: .72rem !important;
+            line-height: 1.05 !important;
+            margin-bottom: .2rem !important;
         }
 
         .daily-total-value {
-            color: #ffffff !important;
-            font-size: 2.35rem !important;
+            color: #0d6efd !important;
+            font-size: 1.45rem !important;
             font-weight: 950 !important;
             line-height: 1 !important;
-            margin-top: .35rem !important;
-            letter-spacing: -.04em !important;
+            margin-top: .15rem !important;
+            letter-spacing: -.035em !important;
         }
 
-        .row.g-3.mb-4 > .col-md-3:nth-child(2) .daily-total-card {
-            background: linear-gradient(135deg, #14532d 0%, #16a34a 100%) !important;
-            box-shadow: 0 12px 28px rgba(20, 83, 45, 0.22) !important;
-        }
-
-        .row.g-3.mb-4 > .col-md-3:nth-child(3) .daily-total-card {
-            background: linear-gradient(135deg, #92400e 0%, #f59e0b 100%) !important;
-            box-shadow: 0 12px 28px rgba(146, 64, 14, 0.22) !important;
-        }
-
-        .row.g-3.mb-4 > .col-md-3:nth-child(4) .daily-total-card {
-            background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%) !important;
-            box-shadow: 0 12px 28px rgba(127, 29, 29, 0.22) !important;
-        }
+        .row.g-3.mb-4 > .col-md-3:nth-child(2) .daily-total-value { color: #198754 !important; }
+        .row.g-3.mb-4 > .col-md-3:nth-child(3) .daily-total-value { color: #b45309 !important; }
+        .row.g-3.mb-4 > .col-md-3:nth-child(4) .daily-total-value { color: #dc3545 !important; }
     </style>
 </head>
 <body>
