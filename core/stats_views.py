@@ -17,22 +17,15 @@ STATIONS = [
     ("covering", "Covering", "covering_prep", "covering_lines"),
 ]
 
+PERIOD_LABELS = {
+    "day": "Daily",
+    "week": "Weekly",
+    "month": "Monthly",
+}
+
 
 def _safe_int(value):
     return value or 0
-
-
-def _fmt(value):
-    try:
-        return f"{int(value or 0):,}"
-    except (TypeError, ValueError):
-        return value
-
-
-def _add_fmt_fields(row, keys):
-    for key in keys:
-        row[f"{key}_fmt"] = _fmt(row.get(key, 0))
-    return row
 
 
 def _parse_period(request):
@@ -152,32 +145,26 @@ def _worker_dataset(start_dt, end_dt):
     table = []
     for row in stats.values():
         row["avg_lines"] = round(row["total_lines"] / row["total_orders"], 1) if row["total_orders"] else 0
-        _add_fmt_fields(row, [
-            "total_orders", "total_lines", "bar_orders", "bar_lines",
-            "sheet_orders", "sheet_lines", "covering_orders", "covering_lines",
-        ])
         table.append(row)
 
     table.sort(key=lambda r: (r["total_lines"], r["total_orders"], r["name"]), reverse=True)
 
     total_orders = sum(row["total_orders"] for row in table)
     total_lines = sum(row["total_lines"] for row in table)
-    summary = {
-        "employees": len(table),
-        "orders": total_orders,
-        "lines": total_lines,
-        "avg_lines": round(total_lines / total_orders, 1) if total_orders else 0,
-        "archived_orders": len(orders),
-        "pickup_orders": len(pickups),
-    }
-    _add_fmt_fields(summary, ["employees", "orders", "lines", "archived_orders", "pickup_orders"])
 
     return {
         "table": table,
         "labels": json.dumps([row["name"] for row in table]),
         "orders": json.dumps([row["total_orders"] for row in table]),
         "lines": json.dumps([row["total_lines"] for row in table]),
-        "summary": summary,
+        "summary": {
+            "employees": len(table),
+            "orders": total_orders,
+            "lines": total_lines,
+            "avg_lines": round(total_lines / total_orders, 1) if total_orders else 0,
+            "archived_orders": len(orders),
+            "pickup_orders": len(pickups),
+        },
     }
 
 
@@ -194,9 +181,7 @@ def _run_summary(start_date, end_date):
         total_coils=Sum("coils"),
         total_orders=Count("id"),
     )
-    summary = {key: _safe_int(value) for key, value in summary.items()}
-    _add_fmt_fields(summary, ["total_weight", "total_skids", "total_bundles", "total_coils", "total_orders"])
-    return summary
+    return {key: _safe_int(value) for key, value in summary.items()}
 
 
 def _daily_run_rows(start_date, end_date):
@@ -227,11 +212,10 @@ def _region_rows(start_date, end_date):
         row["region"] = row["region"] or "Unassigned"
         for key in ["total_weight", "total_skids", "total_bundles", "total_coils", "total_orders"]:
             row[key] = _safe_int(row[key])
-        _add_fmt_fields(row, ["total_weight", "total_skids", "total_bundles", "total_coils", "total_orders"])
     return rows
 
 
-def _customer_rows(start_date, end_date, sort_by="weight"):
+def _customer_rows(start_date, end_date, sort_by="total_weight"):
     allowed_sort = {
         "orders": "-total_orders",
         "weight": "-total_weight",
@@ -258,7 +242,6 @@ def _customer_rows(start_date, end_date, sort_by="weight"):
         row["city"] = row["city"] or ""
         for key in ["total_weight", "total_skids", "total_bundles", "total_coils", "total_orders"]:
             row[key] = _safe_int(row[key])
-        _add_fmt_fields(row, ["total_weight", "total_skids", "total_bundles", "total_coils", "total_orders"])
     return rows
 
 
