@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block container_type %}container-fluid px-4{% endblock %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .stats-header { background: linear-gradient(135deg, #0f172a, #2563eb); color: white; border-radius: 1.5rem; padding: 1.75rem; box-shadow: 0 16px 40px rgba(16,24,40,.18); }
+    .metric-card { border: 0; border-radius: 1.2rem; box-shadow: 0 8px 24px rgba(16,24,40,.08); }
+    .metric-value { font-size: 2rem; font-weight: 900; }
+    .panel-card { border: 0; border-radius: 1.2rem; box-shadow: 0 8px 24px rgba(16,24,40,.08); overflow: hidden; }
+    .table th { font-size: .78rem; text-transform: uppercase; color: #64748b; white-space: nowrap; }
+    .nav-pills .nav-link { font-weight: 800; border-radius: 999px; }
+    .nav-pills .nav-link.active { background: #111827; }
+</style>
+
+<div class="stats-header mb-4 mt-2">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <a href="{% url 'stats' %}" class="text-white-50 text-decoration-none small"><i class="bi bi-arrow-left"></i> Stats Home</a>
+            <h1 class="fw-bold mb-1 mt-1">Run Sheet Stats</h1>
+            <p class="mb-0 text-white-50">Shipping totals by day, week, month, region, and customer.</p>
+        </div>
+        <form method="get" class="bg-white bg-opacity-10 rounded-4 p-3 d-flex gap-2 flex-wrap align-items-end">
+            <input type="hidden" name="tab" value="{{ active_tab }}">
+            <input type="hidden" name="customer_sort" value="{{ customer_sort }}">
+            {% if active_tab == 'day' %}<div><label class="form-label small fw-bold text-white">Day</label><input type="date" name="day" class="form-control fw-bold" value="{{ day_val }}" onchange="this.form.submit()"></div>{% endif %}
+            {% if active_tab == 'week' %}<div><label class="form-label small fw-bold text-white">Week</label><input type="week" name="week" class="form-control fw-bold" value="{{ week_val }}" onchange="this.form.submit()"></div>{% endif %}
+            {% if active_tab == 'month' %}<div><label class="form-label small fw-bold text-white">Month</label><input type="month" name="month" class="form-control fw-bold" value="{{ month_val }}" onchange="this.form.submit()"></div>{% endif %}
+        </form>
+    </div>
+</div>
+
+<ul class="nav nav-pills gap-2 mb-4">
+    <li class="nav-item"><a class="nav-link {% if active_tab == 'day' %}active{% endif %}" href="?tab=day&day={{ day_val }}&customer_sort={{ customer_sort }}">Daily</a></li>
+    <li class="nav-item"><a class="nav-link {% if active_tab == 'week' %}active{% endif %}" href="?tab=week&week={{ week_val }}&customer_sort={{ customer_sort }}">Weekly</a></li>
+    <li class="nav-item"><a class="nav-link {% if active_tab == 'month' %}active{% endif %}" href="?tab=month&month={{ month_val }}&customer_sort={{ customer_sort }}">Monthly</a></li>
+</ul>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3"><div class="card metric-card p-4"><div class="text-muted fw-bold small">PERIOD</div><div class="fs-4 fw-bold text-dark">{{ active_title }}</div></div></div>
+    <div class="col-md-3"><div class="card metric-card p-4"><div class="text-muted fw-bold small">TOTAL WEIGHT</div><div class="metric-value text-primary">{{ active_dataset.summary.total_weight_fmt }}</div><div class="text-muted">lbs</div></div></div>
+    <div class="col-md-2"><div class="card metric-card p-4"><div class="text-muted fw-bold small">SKIDS</div><div class="metric-value text-success">{{ active_dataset.summary.total_skids_fmt }}</div></div></div>
+    <div class="col-md-2"><div class="card metric-card p-4"><div class="text-muted fw-bold small">BUNDLES</div><div class="metric-value text-warning">{{ active_dataset.summary.total_bundles_fmt }}</div></div></div>
+    <div class="col-md-2"><div class="card metric-card p-4"><div class="text-muted fw-bold small">COILS</div><div class="metric-value text-danger">{{ active_dataset.summary.total_coils_fmt }}</div></div></div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-7"><div class="card panel-card p-4 h-100"><h4 class="fw-bold mb-3">Weight Shipped by Day</h4><canvas id="dailyWeightChart" height="120"></canvas></div></div>
+    <div class="col-lg-5"><div class="card panel-card p-4 h-100"><h4 class="fw-bold mb-3">Weight by Region</h4><canvas id="regionWeightChart" height="170"></canvas></div></div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-5">
+        <div class="card panel-card h-100">
+            <div class="card-header bg-white p-4"><h4 class="fw-bold mb-0">Region Summary</h4></div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th class="ps-4">Region</th><th class="text-end">Weight</th><th class="text-end">Skids</th><th class="text-end">Bundles</th><th class="text-end pe-4">Coils</th></tr></thead>
+                    <tbody>{% for row in active_dataset.region_rows %}<tr><td class="ps-4 fw-bold">{{ row.region }}</td><td class="text-end">{{ row.total_weight_fmt }}</td><td class="text-end">{{ row.total_skids_fmt }}</td><td class="text-end">{{ row.total_bundles_fmt }}</td><td class="text-end pe-4">{{ row.total_coils_fmt }}</td></tr>{% empty %}<tr><td colspan="5" class="text-center text-muted py-5">No region data found.</td></tr>{% endfor %}</tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card panel-card h-100">
+            <div class="card-header bg-white p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h4 class="fw-bold mb-0">Top Customers</h4>
+                <div class="btn-group btn-group-sm">
+                    <a class="btn btn-outline-dark {% if customer_sort == 'orders' %}active{% endif %}" href="?tab={{ active_tab }}&day={{ day_val }}&week={{ week_val }}&month={{ month_val }}&customer_sort=orders">Orders</a>
+                    <a class="btn btn-outline-dark {% if customer_sort == 'weight' %}active{% endif %}" href="?tab={{ active_tab }}&day={{ day_val }}&week={{ week_val }}&month={{ month_val }}&customer_sort=weight">Weight</a>
+                    <a class="btn btn-outline-dark {% if customer_sort == 'skids' %}active{% endif %}" href="?tab={{ active_tab }}&day={{ day_val }}&week={{ week_val }}&month={{ month_val }}&customer_sort=skids">Skids</a>
+                    <a class="btn btn-outline-dark {% if customer_sort == 'bundles' %}active{% endif %}" href="?tab={{ active_tab }}&day={{ day_val }}&week={{ week_val }}&month={{ month_val }}&customer_sort=bundles">Bundles</a>
+                    <a class="btn btn-outline-dark {% if customer_sort == 'coils' %}active{% endif %}" href="?tab={{ active_tab }}&day={{ day_val }}&week={{ week_val }}&month={{ month_val }}&customer_sort=coils">Coils</a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th class="ps-4">Customer</th><th>City</th><th class="text-end">Orders</th><th class="text-end">Weight</th><th class="text-end">Skids</th><th class="text-end">Bundles</th><th class="text-end pe-4">Coils</th></tr></thead>
+                    <tbody>{% for row in active_dataset.customer_rows %}<tr><td class="ps-4 fw-bold">{{ row.customer_name }}</td><td class="text-muted">{{ row.city }}</td><td class="text-end">{{ row.total_orders_fmt }}</td><td class="text-end">{{ row.total_weight_fmt }}</td><td class="text-end">{{ row.total_skids_fmt }}</td><td class="text-end">{{ row.total_bundles_fmt }}</td><td class="text-end pe-4">{{ row.total_coils_fmt }}</td></tr>{% empty %}<tr><td colspan="7" class="text-center text-muted py-5">No customer data found.</td></tr>{% endfor %}</tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+new Chart(document.getElementById('dailyWeightChart'), {type:'bar',data:{labels:{{ active_dataset.daily_labels|safe }},datasets:[{label:'Weight',data:{{ active_dataset.daily_weights|safe }},borderRadius:8},{label:'Orders',data:{{ active_dataset.daily_orders|safe }},borderRadius:8}]},options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true},x:{grid:{display:false}}}}});
+new Chart(document.getElementById('regionWeightChart'), {type:'doughnut',data:{labels:{{ active_dataset.region_labels|safe }},datasets:[{data:{{ active_dataset.region_weights|safe }} }]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});
+</script>
+{% endblock %}
