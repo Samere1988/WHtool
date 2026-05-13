@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block container_type %}container-fluid px-4{% endblock %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .stats-header { background: linear-gradient(135deg, #0f172a, #15803d); color: white; border-radius: 1.5rem; padding: 1.75rem; box-shadow: 0 16px 40px rgba(16,24,40,.18); }
+    .metric-card { border: 0; border-radius: 1.2rem; box-shadow: 0 8px 24px rgba(16,24,40,.08); }
+    .metric-value { font-size: 2rem; font-weight: 900; }
+    .panel-card { border: 0; border-radius: 1.2rem; box-shadow: 0 8px 24px rgba(16,24,40,.08); overflow: hidden; }
+    .table th { font-size: .78rem; text-transform: uppercase; color: #64748b; }
+    .nav-pills .nav-link { font-weight: 800; border-radius: 999px; }
+    .nav-pills .nav-link.active { background: #111827; }
+</style>
+
+<div class="stats-header mb-4 mt-2">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <a href="{% url 'stats' %}" class="text-white-50 text-decoration-none small"><i class="bi bi-arrow-left"></i> Stats Home</a>
+            <h1 class="fw-bold mb-1 mt-1">Worker Stats</h1>
+            <p class="mb-0 text-white-50">Productivity updates as soon as orders or pickups are entered.</p>
+        </div>
+        <form method="get" class="bg-white bg-opacity-10 rounded-4 p-3 d-flex gap-2 flex-wrap align-items-end">
+            <input type="hidden" name="tab" value="{{ active_tab }}">
+            {% if active_tab == 'day' %}<div><label class="form-label small fw-bold text-white">Day</label><input type="date" name="day" class="form-control fw-bold" value="{{ day_val }}" onchange="this.form.submit()"></div>{% endif %}
+            {% if active_tab == 'week' %}<div><label class="form-label small fw-bold text-white">Week</label><input type="week" name="week" class="form-control fw-bold" value="{{ week_val }}" onchange="this.form.submit()"></div>{% endif %}
+            {% if active_tab == 'month' %}<div><label class="form-label small fw-bold text-white">Month</label><input type="month" name="month" class="form-control fw-bold" value="{{ month_val }}" onchange="this.form.submit()"></div>{% endif %}
+        </form>
+    </div>
+</div>
+
+<ul class="nav nav-pills gap-2 mb-4">
+    <li class="nav-item"><a class="nav-link {% if active_tab == 'day' %}active{% endif %}" href="?tab=day&day={{ day_val }}">Daily</a></li>
+    <li class="nav-item"><a class="nav-link {% if active_tab == 'week' %}active{% endif %}" href="?tab=week&week={{ week_val }}">Weekly</a></li>
+    <li class="nav-item"><a class="nav-link {% if active_tab == 'month' %}active{% endif %}" href="?tab=month&month={{ month_val }}">Monthly</a></li>
+</ul>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3"><div class="card metric-card p-4"><div class="text-muted fw-bold small">PERIOD</div><div class="fs-4 fw-bold text-dark">{{ active_title }}</div></div></div>
+    <div class="col-md-3"><div class="card metric-card p-4"><div class="text-muted fw-bold small">EMPLOYEES</div><div class="metric-value text-primary">{{ active_dataset.summary.employees_fmt }}</div></div></div>
+    <div class="col-md-3"><div class="card metric-card p-4"><div class="text-muted fw-bold small">ORDERS CREDITED</div><div class="metric-value text-success">{{ active_dataset.summary.orders_fmt }}</div></div></div>
+    <div class="col-md-3"><div class="card metric-card p-4"><div class="text-muted fw-bold small">TOTAL LINES</div><div class="metric-value text-danger">{{ active_dataset.summary.lines_fmt }}</div></div></div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8"><div class="card panel-card p-4 h-100"><h4 class="fw-bold mb-3">Lines Prepared by Worker</h4><canvas id="workerChart" height="110"></canvas></div></div>
+    <div class="col-lg-4"><div class="card panel-card p-4 h-100"><h4 class="fw-bold mb-3">Quick Summary</h4><div class="d-flex justify-content-between border-bottom py-2"><span>Archived orders</span><strong>{{ active_dataset.summary.archived_orders_fmt }}</strong></div><div class="d-flex justify-content-between border-bottom py-2"><span>Pickup orders</span><strong>{{ active_dataset.summary.pickup_orders_fmt }}</strong></div><div class="d-flex justify-content-between border-bottom py-2"><span>Avg lines/order</span><strong>{{ active_dataset.summary.avg_lines }}</strong></div><div class="alert alert-info mt-3 mb-0 small">When multiple workers are selected for one station, each worker receives full credit for that station.</div></div></div>
+</div>
+
+<div class="card panel-card mb-5">
+    <div class="card-header bg-white p-4"><h4 class="fw-bold mb-0">Worker Ranking</h4></div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th class="ps-4">Worker</th><th class="text-center">Orders</th><th class="text-center">Lines</th><th class="text-center">Avg</th><th class="text-center">Bar</th><th class="text-center">Sheet</th><th class="text-center">Covering</th></tr></thead>
+            <tbody>
+                {% for row in active_dataset.table %}
+                <tr><td class="ps-4 fw-bold">{{ row.name }}</td><td class="text-center">{{ row.total_orders_fmt }}</td><td class="text-center"><span class="badge bg-primary fs-6">{{ row.total_lines_fmt }}</span></td><td class="text-center">{{ row.avg_lines }}</td><td class="text-center small">{{ row.bar_lines_fmt }} lines / {{ row.bar_orders_fmt }} orders</td><td class="text-center small">{{ row.sheet_lines_fmt }} lines / {{ row.sheet_orders_fmt }} orders</td><td class="text-center small">{{ row.covering_lines_fmt }} lines / {{ row.covering_orders_fmt }} orders</td></tr>
+                {% empty %}<tr><td colspan="7" class="text-center text-muted py-5">No worker stats found for this period.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+new Chart(document.getElementById('workerChart'), {type:'bar',data:{labels:{{ active_dataset.labels|safe }},datasets:[{label:'Lines',data:{{ active_dataset.lines|safe }},borderRadius:8},{label:'Orders',data:{{ active_dataset.orders|safe }},borderRadius:8}]},options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true},x:{grid:{display:false}}}}});
+</script>
+{% endblock %}
