@@ -200,6 +200,13 @@
                 data-bs-target="#importRunSheetModal">
             <i class="bi bi-upload me-1"></i> IMPORT RUN SHEET
         </button>
+
+        <button type="button"
+                class="btn btn-outline-success fw-bold shadow-sm px-3"
+                data-bs-toggle="modal"
+                data-bs-target="#commitModal">
+            COMMIT DAY
+        </button>
     </div>
 </div>
 
@@ -499,11 +506,46 @@
 
                     <button type="submit"
                             class="btn btn-primary fw-bold px-4"
-                            onclick="return confirm('Import this file and preview the transport order for the selected shipping date?')">
+                            onclick="return confirm('Import this file and replace the current run sheet order for the selected shipping date?')">
                         Import Run Sheet
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="commitModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-success text-white py-3">
+                <h5 class="modal-title fw-bold">Commit & Clear Day</h5>
+                <button type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <p class="fs-5">Save stats and clear the selected shipping date?</p>
+                <small class="text-muted">
+                    This will commit the run sheet for {{ selected_shipping_date|date:'l F j, Y' }} to memory and clear only that shipping date from the live board.
+                </small>
+            </div>
+            <div class="modal-footer justify-content-center border-0 pb-4">
+                <button type="button"
+                        class="btn btn-secondary px-4"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <form action="{% url 'commit_and_clear_day' %}" method="post">
+                    {% csrf_token %}
+                    <input type="hidden"
+                           name="shipping_date"
+                           value="{{ selected_shipping_date|date:'Y-m-d' }}">
+                    <button type="submit" class="btn btn-success fw-bold px-4">
+                        Commit & Archive
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
