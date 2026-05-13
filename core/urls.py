@@ -22,7 +22,6 @@ urlpatterns = [
     path('export-excel/', transport_export_views.export_run_sheet_excel, name='export_run_sheet_excel'),
     path('upload/', transport_commit_views.upload_transport_preview, name='upload_run_sheet'),
     path('clear-sheet/', views.clear_run_sheet, name='clear_run_sheet'),
-    path('commit-day/', views.commit_and_clear_day, name='commit_and_clear_day'),
 
     # --- SAFER TRANSPORT-COMPANY IMPORT WORKFLOW ---
     path('transport-import/upload/', transport_commit_views.upload_transport_preview, name='upload_transport_import'),
