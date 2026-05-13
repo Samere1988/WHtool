@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load run_sheet_extras %}
 
 {% block container_type %}container-fluid px-4{% endblock %}
 
@@ -135,19 +134,6 @@
         border-radius: 0.75rem;
         padding: 0.75rem;
     }
-
-    .daily-total-card {
-        border: 0;
-        border-radius: 1rem;
-        box-shadow: 0 6px 18px rgba(0,0,0,.08);
-        background: #ffffff;
-    }
-
-    .daily-total-value {
-        font-size: 1.65rem;
-        font-weight: 900;
-        letter-spacing: -.03em;
-    }
 </style>
 
 {% if messages %}
@@ -217,36 +203,6 @@
     </div>
 </div>
 
-{% with totals=grouped_orders|run_totals %}
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card daily-total-card p-3">
-            <div class="text-muted small fw-bold">TOTAL WEIGHT</div>
-            <div class="daily-total-value text-primary">{{ totals.weight|comma }}</div>
-            <div class="text-muted small">lbs</div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card daily-total-card p-3">
-            <div class="text-muted small fw-bold">TOTAL SKIDS</div>
-            <div class="daily-total-value text-success">{{ totals.skids|comma }}</div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card daily-total-card p-3">
-            <div class="text-muted small fw-bold">TOTAL BUNDLES</div>
-            <div class="daily-total-value text-warning">{{ totals.bundles|comma }}</div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card daily-total-card p-3">
-            <div class="text-muted small fw-bold">TOTAL COILS</div>
-            <div class="daily-total-value text-danger">{{ totals.coils|comma }}</div>
-        </div>
-    </div>
-</div>
-{% endwith %}
-
 <div class="row row-cols-1 row-cols-xl-2 g-4">
     {% for region, data in grouped_orders.items %}
     <div class="col">
@@ -255,7 +211,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="truck-header-text">{{ region|upper }}</span>
                     <span class="badge bg-primary region-weight-badge shadow-sm">
-                        {{ data.totals.weight|comma }} LBS
+                        {{ data.totals.weight }} LBS
                     </span>
                 </div>
             </div>
@@ -316,21 +272,21 @@
                             </td>
 
                             <td class="text-center">
-                                <span class="fw-bold fs-5">{{ stop.weight|comma }}</span>
+                                <span class="fw-bold fs-5">{{ stop.weight }}</span>
                             </td>
 
                             <td class="text-center">
                                 <div class="load-text">
                                     {% if stop.skids > 0 %}
-                                        {{ stop.skids|comma }} skid{{ stop.skids|pluralize }}{% if stop.bundles > 0 or stop.coils > 0 %}, {% endif %}
+                                        {{ stop.skids }} skid{{ stop.skids|pluralize }}{% if stop.bundles > 0 or stop.coils > 0 %}, {% endif %}
                                     {% endif %}
 
                                     {% if stop.bundles > 0 %}
-                                        {{ stop.bundles|comma }} bundle{{ stop.bundles|pluralize }}{% if stop.coils > 0 %}, {% endif %}
+                                        {{ stop.bundles }} bundle{{ stop.bundles|pluralize }}{% if stop.coils > 0 %}, {% endif %}
                                     {% endif %}
 
                                     {% if stop.coils > 0 %}
-                                        {{ stop.coils|comma }} coil{{ stop.coils|pluralize }}
+                                        {{ stop.coils }} coil{{ stop.coils|pluralize }}
                                     {% endif %}
 
                                     {% if stop.skids == 0 and stop.bundles == 0 and stop.coils == 0 %}
@@ -399,10 +355,10 @@
                                             {% for order in stop.orders %}
                                             <tr>
                                                 <td class="fw-bold text-primary">{{ order.order_number }}</td>
-                                                <td class="text-center">{{ order.weight|comma }}</td>
-                                                <td class="text-center">{{ order.skids|comma }}</td>
-                                                <td class="text-center">{{ order.bundles|comma }}</td>
-                                                <td class="text-center">{{ order.coils|comma }}</td>
+                                                <td class="text-center">{{ order.weight }}</td>
+                                                <td class="text-center">{{ order.skids }}</td>
+                                                <td class="text-center">{{ order.bundles }}</td>
+                                                <td class="text-center">{{ order.coils }}</td>
                                                 <td>{{ order.prepared_by }}</td>
                                                 <td>{{ order.closing_time }}</td>
                                                 <td class="text-center">
@@ -459,10 +415,10 @@
                                                     {{ order.order_number }}
                                                 </div>
                                                 <small class="text-muted">
-                                                    {{ order.weight|comma }} lbs |
-                                                    {{ order.skids|comma }} skids |
-                                                    {{ order.bundles|comma }} bundles |
-                                                    {{ order.coils|comma }} coils
+                                                    {{ order.weight }} lbs |
+                                                    {{ order.skids }} skids |
+                                                    {{ order.bundles }} bundles |
+                                                    {{ order.coils }} coils
                                                     {% if order.prepared_by %}
                                                         | Prepared by {{ order.prepared_by }}
                                                     {% endif %}
@@ -488,10 +444,10 @@
             {% endfor %}
 
             <div class="card-footer bg-light d-flex justify-content-around py-3 border-top">
-                <span class="fw-bold text-primary">{{ data.totals.weight|comma }} Lbs Total</span>
-                <span class="fw-bold text-dark">{{ data.totals.skids|comma }} Skids</span>
-                <span class="fw-bold text-dark">{{ data.totals.bundles|comma }} Bundles</span>
-                <span class="fw-bold text-dark">{{ data.totals.coils|comma }} Coils</span>
+                <span class="fw-bold text-primary">{{ data.totals.weight }} Lbs Total</span>
+                <span class="fw-bold text-dark">{{ data.totals.skids }} Skids</span>
+                <span class="fw-bold text-dark">{{ data.totals.bundles }} Bundles</span>
+                <span class="fw-bold text-dark">{{ data.totals.coils }} Coils</span>
             </div>
         </div>
     </div>
