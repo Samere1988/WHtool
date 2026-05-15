@@ -1,0 +1,749 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<style>
+    .stats-card {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+    }
+
+    .summary-value {
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: #0d2c54;
+        line-height: 1;
+    }
+
+    .summary-label {
+        font-size: 0.76rem;
+        font-weight: 800;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .summary-subtext {
+        font-size: 0.82rem;
+        color: #6c757d;
+        margin-top: 0.35rem;
+    }
+
+    .stats-table th {
+        background: #f8f9fa;
+        color: #6c757d;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .stats-table td {
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .period-range {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #6c757d;
+    }
+
+    .panel-tab-btn {
+        font-weight: 800;
+        min-width: 120px;
+    }
+
+    .collapse-toggle {
+        cursor: pointer;
+    }
+
+    .collapse-toggle:hover {
+        background-color: #f8f9fa;
+    }
+
+    .detail-row {
+        background: #fbfbfc;
+    }
+
+    .inner-breakdown {
+        max-width: 96%;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .inner-breakdown th {
+        font-size: 0.72rem;
+    }
+
+    .inner-breakdown td {
+        font-size: 0.86rem;
+    }
+
+    .chevron {
+        transition: transform 0.15s ease;
+    }
+
+    .collapse-toggle[aria-expanded="true"] .chevron {
+        transform: rotate(90deg);
+    }
+
+    .smart-summary-card {
+        min-height: 100%;
+    }
+
+    .smart-summary-label {
+        font-size: 0.78rem;
+        font-weight: 900;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .smart-summary-region {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #0d2c54;
+        line-height: 1.1;
+        margin-top: 0.35rem;
+    }
+
+    .smart-summary-details {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #374151;
+        margin-top: 0.75rem;
+    }
+
+    .smart-summary-note {
+        background: #f8f9fa;
+        border-left: 4px solid #0d6efd;
+        border-radius: 0.75rem;
+        padding: 0.85rem 1rem;
+        margin-top: 1rem;
+        color: #6c757d;
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 992px) {
+        .panel-tab-btn {
+            min-width: auto;
+            flex: 1 1 auto;
+        }
+
+        .summary-value {
+            font-size: 1.55rem;
+        }
+
+        .smart-summary-region {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-2 flex-wrap gap-3">
+    <div>
+        <a href="{% url 'stats' %}" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="bi bi-arrow-left"></i> Back to Stats
+        </a>
+
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-truck me-2"></i>Daily Run Stats
+        </h2>
+
+        <p class="text-muted small mb-0">
+            Live run sheet totals for {{ period_label }}.
+        </p>
+    </div>
+</div>
+
+<form method="get" class="card stats-card mb-4">
+    <div class="card-body p-3">
+        <div class="d-flex flex-wrap align-items-end gap-3">
+            <div>
+                <label class="form-label fw-bold text-primary mb-1">Select Month</label>
+                <select name="month"
+                        class="form-select fw-bold"
+                        onchange="this.form.submit()">
+                    {% for month_date in month_options %}
+                        <option value="{{ month_date|date:'Y-m' }}"
+                                {% if selected_month == month_date|date:'Y-m' %}selected{% endif %}>
+                            {{ month_date|date:"F Y" }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="ms-auto period-range">
+                {{ start_date|date:"M d, Y" }} to {{ end_date|date:"M d, Y" }}
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card stats-card h-100">
+            <div class="card-body p-4">
+                <div class="summary-label">Pounds Shipped</div>
+                <div class="summary-value">{{ summary.weight|floatformat:0|intcomma }}</div>
+                <div class="summary-subtext">
+                    {{ summary.orders }} order{{ summary.orders|pluralize }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card stats-card h-100">
+            <div class="card-body p-4">
+                <div class="summary-label">Skids</div>
+                <div class="summary-value">{{ summary.skids|floatformat:0|intcomma }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card stats-card h-100">
+            <div class="card-body p-4">
+                <div class="summary-label">Bundles</div>
+                <div class="summary-value">{{ summary.bundles|floatformat:0|intcomma }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card stats-card h-100">
+            <div class="card-body p-4">
+                <div class="summary-label">Coils</div>
+                <div class="summary-value">{{ summary.coils|floatformat:0|intcomma }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card stats-card h-100">
+            <div class="card-body p-4">
+                <div class="summary-label">Pickups</div>
+                <div class="summary-value text-success">{{ pickup_summary.count|floatformat:0|intcomma }}</div>
+                <div class="summary-subtext">
+                    {{ pickup_summary.weight|floatformat:0|intcomma }} lbs
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card stats-card h-100">
+            <div class="card-body p-4">
+                <div class="summary-label">Returns</div>
+                <div class="summary-value text-warning">{{ return_summary.count|floatformat:0|intcomma }}</div>
+                <div class="summary-subtext">
+                    {{ return_summary.weight|floatformat:0|intcomma }} lbs
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card stats-card mb-4">
+    <div class="card-body p-3">
+        <div class="d-flex flex-wrap gap-2" role="group" aria-label="Stats panel selector">
+            <button type="button"
+                    class="btn btn-primary panel-tab-btn stats-panel-btn"
+                    data-target="regionPanel">
+                By Region
+            </button>
+
+            <button type="button"
+                    class="btn btn-outline-primary panel-tab-btn stats-panel-btn"
+                    data-target="weekPanel">
+                By Week
+            </button>
+
+            <button type="button"
+                    class="btn btn-outline-primary panel-tab-btn stats-panel-btn"
+                    data-target="dayPanel">
+                By Day
+            </button>
+
+            <button type="button"
+                    class="btn btn-outline-success panel-tab-btn stats-panel-btn"
+                    data-target="pickupPanel">
+                Pickups
+            </button>
+
+            <button type="button"
+                    class="btn btn-outline-warning panel-tab-btn stats-panel-btn"
+                    data-target="returnPanel">
+                Returns
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-xl-8">
+        <div id="regionPanel" class="stats-panel">
+            <div class="card stats-card">
+                <div class="card-header bg-dark text-white fw-bold">
+                    Monthly Breakdown by Region
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 stats-table">
+                        <thead>
+                            <tr>
+                                <th>Region</th>
+                                <th class="text-end">Orders</th>
+                                <th class="text-end">Weight</th>
+                                <th class="text-end">Skids</th>
+                                <th class="text-end">Bundles</th>
+                                <th class="text-end">Coils</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for row in region_rows %}
+                            <tr>
+                                <td class="fw-bold">{{ row.region|default:"No Region" }}</td>
+                                <td class="text-end">{{ row.orders }}</td>
+                                <td class="text-end fw-bold">{{ row.weight|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.skids|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.bundles|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.coils|default:0|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    No live run sheet data found for this month.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="weekPanel" class="stats-panel d-none">
+            <div class="card stats-card">
+                <div class="card-header bg-dark text-white fw-bold">
+                    Breakdown by Week
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 stats-table">
+                        <thead>
+                            <tr>
+                                <th>Week</th>
+                                <th class="text-end">Orders</th>
+                                <th class="text-end">Weight</th>
+                                <th class="text-end">Skids</th>
+                                <th class="text-end">Bundles</th>
+                                <th class="text-end">Coils</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for row in week_rows %}
+                            <tr class="collapse-toggle smart-summary-trigger"
+                                data-summary-scope="Top Region for Week of Monday {{ row.week_start|date:'M d, Y' }}"
+                                data-summary-region="{{ row.top_region.region }}"
+                                data-summary-details="{{ row.top_region.weight|floatformat:0|intcomma }} lbs · {{ row.top_region.skids|floatformat:0|intcomma }} skids · {{ row.top_region.bundles|floatformat:0|intcomma }} bundles · {{ row.top_region.coils|floatformat:0|intcomma }} coils"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#{{ row.collapse_id }}"
+                                aria-expanded="false"
+                                aria-controls="{{ row.collapse_id }}">
+                                <td class="fw-bold">
+                                    <i class="bi bi-chevron-right chevron me-1"></i>
+                                    Week of Monday {{ row.week_start|date:"M d, Y" }}
+                                </td>
+                                <td class="text-end">{{ row.orders }}</td>
+                                <td class="text-end fw-bold">{{ row.weight|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.skids|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.bundles|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.coils|floatformat:0|intcomma }}</td>
+                            </tr>
+
+                            <tr class="collapse detail-row" id="{{ row.collapse_id }}">
+                                <td colspan="6">
+                                    <div class="inner-breakdown py-3">
+                                        <div class="fw-bold mb-2 text-muted">
+                                            Region breakdown for week of Monday {{ row.week_start|date:"M d, Y" }}
+                                        </div>
+
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Region</th>
+                                                    <th class="text-end">Orders</th>
+                                                    <th class="text-end">Weight</th>
+                                                    <th class="text-end">Skids</th>
+                                                    <th class="text-end">Bundles</th>
+                                                    <th class="text-end">Coils</th>
+                                                </tr>
+                                            </thead>
+
+                                            <tbody>
+                                                {% for region in row.regions %}
+                                                <tr>
+                                                    <td class="fw-bold">{{ region.region|default:"No Region" }}</td>
+                                                    <td class="text-end">{{ region.orders }}</td>
+                                                    <td class="text-end fw-bold">{{ region.weight|default:0|floatformat:0|intcomma }}</td>
+                                                    <td class="text-end">{{ region.skids|default:0|floatformat:0|intcomma }}</td>
+                                                    <td class="text-end">{{ region.bundles|default:0|floatformat:0|intcomma }}</td>
+                                                    <td class="text-end">{{ region.coils|default:0|floatformat:0|intcomma }}</td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="6" class="text-center text-muted">
+                                                        No region data found.
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    No live run sheet data found for this month.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="dayPanel" class="stats-panel d-none">
+            <div class="card stats-card">
+                <div class="card-header bg-dark text-white fw-bold">
+                    Breakdown by Day
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 stats-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th class="text-end">Orders</th>
+                                <th class="text-end">Weight</th>
+                                <th class="text-end">Skids</th>
+                                <th class="text-end">Bundles</th>
+                                <th class="text-end">Coils</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for row in day_rows %}
+                            <tr class="collapse-toggle smart-summary-trigger"
+                                data-summary-scope="Top Region for {{ row.date|date:'M d, Y' }}"
+                                data-summary-region="{{ row.top_region.region }}"
+                                data-summary-details="{{ row.top_region.weight|floatformat:0|intcomma }} lbs · {{ row.top_region.skids|floatformat:0|intcomma }} skids · {{ row.top_region.bundles|floatformat:0|intcomma }} bundles · {{ row.top_region.coils|floatformat:0|intcomma }} coils"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#{{ row.collapse_id }}"
+                                aria-expanded="false"
+                                aria-controls="{{ row.collapse_id }}">
+                                <td class="fw-bold">
+                                    <i class="bi bi-chevron-right chevron me-1"></i>
+                                    {{ row.date|date:"M d, Y" }}
+                                </td>
+                                <td class="text-end">{{ row.orders }}</td>
+                                <td class="text-end fw-bold">{{ row.weight|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.skids|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.bundles|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.coils|floatformat:0|intcomma }}</td>
+                            </tr>
+
+                            <tr class="collapse detail-row" id="{{ row.collapse_id }}">
+                                <td colspan="6">
+                                    <div class="inner-breakdown py-3">
+                                        <div class="fw-bold mb-2 text-muted">
+                                            Region breakdown for {{ row.date|date:"M d, Y" }}
+                                        </div>
+
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Region</th>
+                                                    <th class="text-end">Orders</th>
+                                                    <th class="text-end">Weight</th>
+                                                    <th class="text-end">Skids</th>
+                                                    <th class="text-end">Bundles</th>
+                                                    <th class="text-end">Coils</th>
+                                                </tr>
+                                            </thead>
+
+                                            <tbody>
+                                                {% for region in row.regions %}
+                                                <tr>
+                                                    <td class="fw-bold">{{ region.region|default:"No Region" }}</td>
+                                                    <td class="text-end">{{ region.orders }}</td>
+                                                    <td class="text-end fw-bold">{{ region.weight|default:0|floatformat:0|intcomma }}</td>
+                                                    <td class="text-end">{{ region.skids|default:0|floatformat:0|intcomma }}</td>
+                                                    <td class="text-end">{{ region.bundles|default:0|floatformat:0|intcomma }}</td>
+                                                    <td class="text-end">{{ region.coils|default:0|floatformat:0|intcomma }}</td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="6" class="text-center text-muted">
+                                                        No region data found.
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    No live run sheet data found for this month.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="pickupPanel" class="stats-panel d-none">
+            <div class="card stats-card">
+                <div class="card-header bg-success text-white fw-bold">
+                    Pickup Details
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 stats-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Region</th>
+                                <th>Customer / Vendor</th>
+                                <th>Order #</th>
+                                <th class="text-end">Weight</th>
+                                <th class="text-end">Skids</th>
+                                <th class="text-end">Bundles</th>
+                                <th class="text-end">Coils</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for row in pickup_rows %}
+                            <tr>
+                                <td class="fw-bold">{{ row.shipping_date|date:"M d, Y" }}</td>
+                                <td>{{ row.region|default:"-" }}</td>
+                                <td class="fw-bold">{{ row.customer_name }}</td>
+                                <td>{{ row.order_number|default:"-" }}</td>
+                                <td class="text-end fw-bold">{{ row.weight|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.skids|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.bundles|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.coils|default:0|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-5">
+                                    No pickups found for this month.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="returnPanel" class="stats-panel d-none">
+            <div class="card stats-card">
+                <div class="card-header bg-warning text-dark fw-bold">
+                    Return Details
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 stats-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Region</th>
+                                <th>Customer</th>
+                                <th>Return #</th>
+                                <th class="text-end">Weight</th>
+                                <th class="text-end">Skids</th>
+                                <th class="text-end">Bundles</th>
+                                <th class="text-end">Coils</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for row in return_rows %}
+                            <tr>
+                                <td class="fw-bold">{{ row.shipping_date|date:"M d, Y" }}</td>
+                                <td>{{ row.region|default:"-" }}</td>
+                                <td class="fw-bold">{{ row.customer_name }}</td>
+                                <td>{{ row.order_number|default:"-" }}</td>
+                                <td class="text-end fw-bold">{{ row.weight|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.skids|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.bundles|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.coils|default:0|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-5">
+                                    No returns found for this month.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+        <div class="card stats-card smart-summary-card">
+            <div class="card-header bg-white fw-bold">
+                Smart Summary
+            </div>
+
+            <div class="card-body">
+                <div class="smart-summary-label" id="smartSummaryScope">
+                    Top Region for {{ period_label }}
+                </div>
+
+                <div class="smart-summary-region" id="smartSummaryRegion">
+                    {{ top_month_region.region }}
+                </div>
+
+                <div class="smart-summary-details" id="smartSummaryDetails">
+                    {{ top_month_region.weight|floatformat:0|intcomma }} lbs ·
+                    {{ top_month_region.skids|floatformat:0|intcomma }} skids ·
+                    {{ top_month_region.bundles|floatformat:0|intcomma }} bundles ·
+                    {{ top_month_region.coils|floatformat:0|intcomma }} coils
+                </div>
+
+                <div class="smart-summary-note" id="smartSummaryNote">
+                    This summary updates based on the selected panel. Click a day or week row to see the top region for that period.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const summaryScope = document.getElementById("smartSummaryScope");
+    const summaryRegion = document.getElementById("smartSummaryRegion");
+    const summaryDetails = document.getElementById("smartSummaryDetails");
+    const summaryNote = document.getElementById("smartSummaryNote");
+
+    const panelSummaryData = {
+        regionPanel: {
+            scope: "Top Region for {{ period_label|escapejs }}",
+            region: "{{ top_month_region.region|escapejs }}",
+            details: "{{ top_month_region.weight|floatformat:0|intcomma|escapejs }} lbs · {{ top_month_region.skids|floatformat:0|intcomma|escapejs }} skids · {{ top_month_region.bundles|floatformat:0|intcomma|escapejs }} bundles · {{ top_month_region.coils|floatformat:0|intcomma|escapejs }} coils",
+            note: "This is the highest region by shipped weight for the selected month."
+        },
+        weekPanel: {
+            scope: "Top Week in {{ period_label|escapejs }}",
+            region: "{% if week_rows %}Week of Monday {{ week_rows.0.week_start|date:'M d, Y'|escapejs }}{% else %}No Week Data{% endif %}",
+            details: "{% if week_rows %}{{ week_rows.0.weight|floatformat:0|intcomma|escapejs }} lbs · {{ week_rows.0.skids|floatformat:0|intcomma|escapejs }} skids · {{ week_rows.0.bundles|floatformat:0|intcomma|escapejs }} bundles · {{ week_rows.0.coils|floatformat:0|intcomma|escapejs }} coils{% else %}0 lbs · 0 skids · 0 bundles · 0 coils{% endif %}",
+            note: "This is the strongest week by shipped weight. Click a week row to show that week’s top region."
+        },
+        dayPanel: {
+            scope: "Top Day in {{ period_label|escapejs }}",
+            region: "{% if day_rows %}{{ day_rows.0.date|date:'M d, Y'|escapejs }}{% else %}No Day Data{% endif %}",
+            details: "{% if day_rows %}{{ day_rows.0.weight|floatformat:0|intcomma|escapejs }} lbs · {{ day_rows.0.skids|floatformat:0|intcomma|escapejs }} skids · {{ day_rows.0.bundles|floatformat:0|intcomma|escapejs }} bundles · {{ day_rows.0.coils|floatformat:0|intcomma|escapejs }} coils{% else %}0 lbs · 0 skids · 0 bundles · 0 coils{% endif %}",
+            note: "This is the strongest day by shipped weight. Click a day row to show that day’s top region."
+        },
+        pickupPanel: {
+            scope: "Top Pickup Region for {{ period_label|escapejs }}",
+            region: "{{ top_pickup_region.region|escapejs }}",
+            details: "{{ top_pickup_region.weight|floatformat:0|intcomma|escapejs }} lbs · {{ top_pickup_region.skids|floatformat:0|intcomma|escapejs }} skids · {{ top_pickup_region.bundles|floatformat:0|intcomma|escapejs }} bundles · {{ top_pickup_region.coils|floatformat:0|intcomma|escapejs }} coils",
+            note: "This is the highest pickup region by weight for the selected month."
+        },
+        returnPanel: {
+            scope: "Top Return Region for {{ period_label|escapejs }}",
+            region: "{{ top_return_region.region|escapejs }}",
+            details: "{{ top_return_region.weight|floatformat:0|intcomma|escapejs }} lbs · {{ top_return_region.skids|floatformat:0|intcomma|escapejs }} skids · {{ top_return_region.bundles|floatformat:0|intcomma|escapejs }} bundles · {{ top_return_region.coils|floatformat:0|intcomma|escapejs }} coils",
+            note: "This is the highest return region by weight for the selected month."
+        }
+    };
+
+    function updateSmartSummary(scope, region, details, note) {
+        if (summaryScope) summaryScope.textContent = scope;
+        if (summaryRegion) summaryRegion.textContent = region;
+        if (summaryDetails) summaryDetails.textContent = details;
+        if (summaryNote) summaryNote.textContent = note;
+    }
+
+    document.querySelectorAll(".stats-panel-btn").forEach(function(button) {
+        button.addEventListener("click", function() {
+            const targetId = this.dataset.target;
+
+            document.querySelectorAll(".stats-panel").forEach(function(panel) {
+                panel.classList.add("d-none");
+            });
+
+            const targetPanel = document.getElementById(targetId);
+            if (targetPanel) {
+                targetPanel.classList.remove("d-none");
+            }
+
+            document.querySelectorAll(".stats-panel-btn").forEach(function(btn) {
+                btn.classList.remove(
+                    "btn-primary",
+                    "btn-success",
+                    "btn-warning",
+                    "text-dark"
+                );
+
+                if (btn.dataset.target === "pickupPanel") {
+                    btn.classList.add("btn-outline-success");
+                } else if (btn.dataset.target === "returnPanel") {
+                    btn.classList.add("btn-outline-warning");
+                } else {
+                    btn.classList.add("btn-outline-primary");
+                }
+            });
+
+            this.classList.remove(
+                "btn-outline-primary",
+                "btn-outline-success",
+                "btn-outline-warning"
+            );
+
+            if (targetId === "pickupPanel") {
+                this.classList.add("btn-success");
+            } else if (targetId === "returnPanel") {
+                this.classList.add("btn-warning", "text-dark");
+            } else {
+                this.classList.add("btn-primary");
+            }
+
+            const data = panelSummaryData[targetId];
+            if (data) {
+                updateSmartSummary(data.scope, data.region, data.details, data.note);
+            }
+        });
+    });
+
+    document.querySelectorAll(".smart-summary-trigger").forEach(function(row) {
+        row.addEventListener("click", function() {
+            updateSmartSummary(
+                this.dataset.summaryScope,
+                this.dataset.summaryRegion,
+                this.dataset.summaryDetails,
+                "This is the top region by weight for the selected day or week."
+            );
+        });
+    });
+</script>
+{% endblock %}

@@ -70,8 +70,11 @@
         <a href="{% url 'outbound_list' %}" class="text-decoration-none text-muted mb-2 d-inline-block">
             <i class="bi bi-arrow-left"></i> Back to Outbound Loads
         </a>
-        <h2 class="fw-bold"><i class="bi bi-truck me-2"></i>{{ load.truck_name }}</h2>
-        <p class="text-muted">Loaded on {{ load.date_loaded|date:"F j, Y" }}</p>
+        <h2 class="fw-bold"><i class="bi bi-truck me-2"></i>Driver: {{ load.truck_name }}</h2>
+        <p class="text-muted">
+            Loaded on {{ load.date_loaded|date:"F j, Y" }}
+            {% if load.loaded_by %} · Loaded by {{ load.loaded_by }}{% endif %}
+</p>
     </div>
 
     <div class="d-flex gap-2">
@@ -136,8 +139,38 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <label class="form-label fw-bold">Truck / Load Name</label>
-                    <input type="text" name="truck_name" class="form-control form-control-lg" value="{{ load.truck_name }}" required>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Date Loaded</label>
+                        <input type="date"
+                               name="date_loaded"
+                               class="form-control form-control-lg"
+                               value="{{ load.date_loaded|date:'Y-m-d' }}"
+                               required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Loaded By</label>
+                        <input type="text"
+                               name="loaded_by"
+                               class="form-control form-control-lg"
+                               placeholder="Employee name"
+                               value="{{ load.loaded_by|default:'' }}"
+                               required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Driver</label>
+                        <input type="text"
+                               name="truck_name"
+                               class="form-control form-control-lg"
+                               placeholder="Driver name"
+                               value="{{ load.truck_name }}"
+                               required>
+                    </div>
+
+                    <div class="alert alert-info mb-0">
+                        To add more photos, use the <strong>Add More Photos</strong> button at the top of this page.
+                    </div>
                 </div>
                 <div class="modal-footer border-0 pb-4">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

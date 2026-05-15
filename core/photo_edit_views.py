@@ -12,13 +12,34 @@ def edit_outbound_load(request, pk):
     if request.method != "POST":
         return redirect("outbound_detail", pk=load.pk)
 
+    date_loaded = request.POST.get("date_loaded", "").strip()
+    loaded_by = request.POST.get("loaded_by", "").strip()
     truck_name = request.POST.get("truck_name", "").strip()
-    if not truck_name:
-        messages.error(request, "Truck name is required.")
+
+    if not date_loaded:
+        messages.error(request, "Date loaded is required.")
         return redirect("outbound_detail", pk=load.pk)
 
+    if not loaded_by:
+        messages.error(request, "Loaded by is required.")
+        return redirect("outbound_detail", pk=load.pk)
+
+    if not truck_name:
+        messages.error(request, "Driver is required.")
+        return redirect("outbound_detail", pk=load.pk)
+
+    from django.utils.dateparse import parse_date
+
+    parsed_date = parse_date(date_loaded)
+    if not parsed_date:
+        messages.error(request, "Invalid date loaded.")
+        return redirect("outbound_detail", pk=load.pk)
+
+    load.date_loaded = parsed_date
+    load.loaded_by = loaded_by
     load.truck_name = truck_name
-    load.save(update_fields=["truck_name"])
+    load.save(update_fields=["date_loaded", "loaded_by", "truck_name"])
+
     messages.success(request, "Outbound load info updated.")
     return redirect("outbound_detail", pk=load.pk)
 
@@ -32,14 +53,36 @@ def edit_container(request, pk):
 
     container_number = request.POST.get("container_number", "").strip()
     unloaded_by = request.POST.get("unloaded_by", "").strip()
+    date_received = request.POST.get("date_received", "").strip()
 
     if not container_number:
         messages.error(request, "Container number is required.")
         return redirect("container_detail", pk=container.pk)
 
+    if not date_received:
+        messages.error(request, "Date unloaded is required.")
+        return redirect("container_detail", pk=container.pk)
+
     container.container_number = container_number
     container.unloaded_by = unloaded_by
-    container.save(update_fields=["container_number", "unloaded_by"])
+
+    # date_received is a DateTimeField, but the form sends only a date.
+    # Keep it as midnight for that selected day.
+    from django.utils.dateparse import parse_date
+    from django.utils import timezone
+    import datetime
+
+    parsed_date = parse_date(date_received)
+
+    if parsed_date:
+        container.date_received = timezone.make_aware(
+            datetime.datetime.combine(parsed_date, datetime.time.min)
+        )
+    else:
+        messages.error(request, "Invalid date unloaded.")
+        return redirect("container_detail", pk=container.pk)
+
+    container.save(update_fields=["container_number", "unloaded_by", "date_received"])
     messages.success(request, "Container info updated.")
     return redirect("container_detail", pk=container.pk)
 

@@ -1,9 +1,115 @@
 {% extends "base.html" %}
-
+{% load humanize %}
 {% block container_type %}container-fluid px-4{% endblock %}
-
 {% block content %}
 <style>
+
+    .region-driver-line {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #dee2e6;
+        margin-top: 0.35rem;
+        }
+
+    .region-driver-line .missing-driver {
+        color: #ffc107;
+        }
+
+    .edit-driver-btn {
+        font-size: 0.8rem;
+        font-weight: 800;
+        padding: 0.25rem 0.55rem;
+    }
+    .run-stop-row {
+        cursor: grab;
+    }
+
+    .run-stop-row:active {
+        cursor: grabbing;
+    }
+
+    .sortable-ghost {
+        opacity: 0.45;
+    }
+
+    .sortable-chosen {
+        background-color: #e7f1ff !important;
+    }
+
+    .drag-save-status {
+        position: fixed;
+        bottom: 18px;
+        right: 18px;
+        z-index: 9999;
+        background: #212529;
+        color: #ffffff;
+        border-radius: 999px;
+        padding: 0.65rem 1rem;
+        font-weight: 800;
+        font-size: 0.85rem;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+        display: none;
+    }
+        .daily-totals-panel {
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.10);
+        padding: 1rem 1.25rem;
+        margin: -0.5rem 0 1.5rem 0;
+    }
+
+    .daily-totals-title {
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.75rem;
+    }
+
+    .daily-totals-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(140px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .daily-total-box {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 0.75rem;
+        padding: 0.85rem 1rem;
+        text-align: center;
+    }
+
+    .daily-total-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+    }
+
+    .daily-total-value {
+        display: block;
+        font-size: 1.65rem;
+        font-weight: 900;
+        color: #0d2c54;
+        line-height: 1.1;
+    }
+
+    .daily-total-unit {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #6c757d;
+    }
+
+    @media (max-width: 992px) {
+        .daily-totals-grid {
+            grid-template-columns: repeat(2, minmax(140px, 1fr));
+        }
+    }
     /* 1. Full-Width Layout */
     .truck-card {
         width: 100%;
@@ -209,19 +315,82 @@
         </button>
     </div>
 </div>
+<div class="daily-totals-panel">
+    <div class="daily-totals-title">
+        Daily Totals — {{ selected_shipping_date|date:"l F j, Y" }}
+    </div>
 
+    <div class="daily-totals-grid">
+        <div class="daily-total-box">
+            <span class="daily-total-label">Weight</span>
+            <span class="daily-total-value">
+                {{ daily_totals.weight|floatformat:0|intcomma }}
+                <span class="daily-total-unit">lbs</span>
+            </span>
+        </div>
+
+        <div class="daily-total-box">
+            <span class="daily-total-label">Skids</span>
+            <span class="daily-total-value">
+                {{ daily_totals.skids|floatformat:0 }}
+            </span>
+        </div>
+
+        <div class="daily-total-box">
+            <span class="daily-total-label">Bundles</span>
+            <span class="daily-total-value">
+                {{ daily_totals.bundles|floatformat:0 }}
+            </span>
+        </div>
+
+        <div class="daily-total-box">
+            <span class="daily-total-label">Coils</span>
+            <span class="daily-total-value">
+                {{ daily_totals.coils|floatformat:0 }}
+            </span>
+        </div>
+    </div>
+</div>
 <div class="row row-cols-1 row-cols-xl-2 g-4">
     {% for region, data in grouped_orders.items %}
     <div class="col">
         <div class="card truck-card overflow-hidden">
             <div class="card-header bg-dark text-white py-3 px-4">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="truck-header-text">{{ region|upper }}</span>
-                    <span class="badge bg-primary region-weight-badge shadow-sm">
-                        {{ data.totals.weight }} LBS
-                    </span>
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                <div>
+                    <div class="truck-header-text">{{ region|upper }}</div>
+
+                    <div class="region-driver-line">
+                        Driver:
+                        {% if data.driver_name %}
+                            {{ data.driver_name }}
+                        {% else %}
+                            <span class="missing-driver">Unassigned</span>
+                        {% endif %}
+
+                        <span class="mx-2">|</span>
+
+                        Start:
+                        {% if data.start_time %}
+                            {{ data.start_time }}
+                        {% else %}
+                            <span class="missing-driver">Not set</span>
+                        {% endif %}
+
+                        <button type="button"
+                                class="btn btn-sm btn-outline-light ms-2 edit-driver-btn"
+                                data-bs-toggle="modal"
+                                data-bs-target="#editDriverModal-{{ forloop.counter }}">
+                            Edit
+                        </button>
+                    </div>
                 </div>
+
+                <span class="badge bg-primary region-weight-badge shadow-sm">
+                    {{ data.totals.weight|floatformat:0|intcomma }} LBS
+                </span>
             </div>
+        </div>
 
             <div class="table-container">
                 <table class="table table-hover align-middle mb-0">
@@ -235,9 +404,11 @@
                         </tr>
                     </thead>
 
-                    <tbody>
+                    <tbody class="sortable-region" data-region="{{ region }}">
                         {% for stop in data.orders %}
-                        <tr class="{% if stop.is_return %}row-return{% elif stop.is_pickup %}row-pickup{% endif %}">
+                        <tr class="run-stop-row {% if stop.is_return %}row-return{% elif stop.is_pickup %}row-pickup{% endif %}"
+                            data-main-order-id="{{ stop.main_order.id }}"
+                            data-order-ids="{% for order in stop.orders %}{{ order.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
                             <td class="ps-4">
                                 {% if stop.is_return %}
                                     <span class="badge bg-warning text-dark type-badge">RETURN</span>
@@ -279,7 +450,7 @@
                             </td>
 
                             <td class="text-center">
-                                <span class="fw-bold fs-5">{{ stop.weight }}</span>
+                                <span class="fw-bold fs-5">{{ stop.weight|floatformat:0|intcomma }}</span>
                             </td>
 
                             <td class="text-center">
@@ -342,7 +513,9 @@
                         </tr>
 
                         {% if stop.orders|length > 1 %}
-                        <tr class="collapse grouped-order-row" id="orders-{{ stop.main_order.id }}">
+                        <tr class="collapse grouped-order-row"
+                            id="orders-{{ stop.main_order.id }}"
+                            data-detail-for="{{ stop.main_order.id }}">
                             <td colspan="5" class="p-3">
                                 <div class="grouped-order-inner shadow-sm">
                                     <table class="table table-sm table-bordered mb-0 grouped-order-table">
@@ -362,7 +535,7 @@
                                             {% for order in stop.orders %}
                                             <tr>
                                                 <td class="fw-bold text-primary">{{ order.order_number }}</td>
-                                                <td class="text-center">{{ order.weight }}</td>
+                                                <td class="text-center">{{ order.weight|floatformat:0|intcomma }}</td>
                                                 <td class="text-center">{{ order.skids }}</td>
                                                 <td class="text-center">{{ order.bundles }}</td>
                                                 <td class="text-center">{{ order.coils }}</td>
@@ -422,7 +595,7 @@
                                                     {{ order.order_number }}
                                                 </div>
                                                 <small class="text-muted">
-                                                    {{ order.weight }} lbs |
+                                                    {{ order.weight|floatformat:0|intcomma }} lbs |
                                                     {{ order.skids }} skids |
                                                     {{ order.bundles }} bundles |
                                                     {{ order.coils }} coils
@@ -451,10 +624,75 @@
             {% endfor %}
 
             <div class="card-footer bg-light d-flex justify-content-around py-3 border-top">
-                <span class="fw-bold text-primary">{{ data.totals.weight }} Lbs Total</span>
+                <span class="fw-bold text-primary">{{ data.totals.weight|floatformat:0|intcomma }} Lbs Total</span>
                 <span class="fw-bold text-dark">{{ data.totals.skids }} Skids</span>
                 <span class="fw-bold text-dark">{{ data.totals.bundles }} Bundles</span>
                 <span class="fw-bold text-dark">{{ data.totals.coils }} Coils</span>
+            </div>
+            <div class="modal fade" id="editDriverModal-{{ forloop.counter }}" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow">
+                        <form method="post" action="{% url 'update_region_driver' %}">
+                            {% csrf_token %}
+
+                            <input type="hidden"
+                                   name="shipping_date"
+                                   value="{{ selected_shipping_date|date:'Y-m-d' }}">
+
+                            <input type="hidden"
+                                   name="region"
+                                   value="{{ region }}">
+
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title fw-bold">
+                                    Edit Driver - {{ region }}
+                                </h5>
+                                <button type="button"
+                                        class="btn-close btn-close-white"
+                                        data-bs-dismiss="modal"></button>
+                            </div>
+
+                            <div class="modal-body p-4">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Driver Name</label>
+                                    <input type="text"
+                                           name="driver_name"
+                                           class="form-control form-control-lg"
+                                           value="{{ data.driver_name }}"
+                                           placeholder="Driver name">
+                                </div>
+
+                                <div>
+                                    <label class="form-label fw-bold">Start Time</label>
+                                    <input type="text"
+                                           name="start_time"
+                                           class="form-control form-control-lg"
+                                           value="{{ data.start_time }}"
+                                           placeholder="Example: 7:30 AM">
+                                </div>
+
+                                <div class="alert alert-info mt-3 mb-0">
+                                    This updates the driver and start time for
+                                    <strong>{{ region }}</strong> on
+                                    <strong>{{ selected_shipping_date|date:"F j, Y" }}</strong>.
+                                </div>
+                            </div>
+
+                            <div class="modal-footer border-0 pb-4">
+                                <button type="button"
+                                        class="btn btn-secondary"
+                                        data-bs-dismiss="modal">
+                                    Cancel
+                                </button>
+
+                                <button type="submit"
+                                        class="btn btn-primary fw-bold">
+                                    Save Driver
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -549,5 +787,119 @@
         </div>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<div id="dragSaveStatus" class="drag-save-status">Saving order...</div>
 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const shippingDate = "{{ selected_shipping_date|date:'Y-m-d' }}";
+    const reorderUrl = "{% url 'reorder_run_sheet' %}";
+    const statusBox = document.getElementById("dragSaveStatus");
+
+    function getCookie(name) {
+        const cookies = document.cookie ? document.cookie.split(";") : [];
+
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+
+            if (cookie.startsWith(name + "=")) {
+                return decodeURIComponent(cookie.substring(name.length + 1));
+            }
+        }
+
+        return null;
+    }
+
+    function showStatus(message) {
+        statusBox.textContent = message;
+        statusBox.style.display = "block";
+
+        setTimeout(function () {
+            statusBox.style.display = "none";
+        }, 1600);
+    }
+
+    function keepDetailRowWithStop(stopRow) {
+        const mainOrderId = stopRow.dataset.mainOrderId;
+        const detailRow = document.querySelector(
+            'tr[data-detail-for="' + mainOrderId + '"]'
+        );
+
+        if (detailRow) {
+            stopRow.parentNode.insertBefore(detailRow, stopRow.nextSibling);
+        }
+    }
+
+    function collectRunSheetOrder() {
+        const regions = [];
+
+        document.querySelectorAll(".sortable-region").forEach(function (tbody) {
+            const region = tbody.dataset.region;
+            const stops = [];
+
+            tbody.querySelectorAll(".run-stop-row").forEach(function (row) {
+                const orderIds = row.dataset.orderIds
+                    .split(",")
+                    .map(id => id.trim())
+                    .filter(Boolean);
+
+                stops.push({
+                    order_ids: orderIds
+                });
+            });
+
+            regions.push({
+                region: region,
+                stops: stops
+            });
+        });
+
+        return {
+            shipping_date: shippingDate,
+            regions: regions
+        };
+    }
+
+    function saveRunSheetOrder() {
+        showStatus("Saving order...");
+
+        fetch(reorderUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            body: JSON.stringify(collectRunSheetOrder())
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showStatus("Order saved");
+            } else {
+                showStatus("Save failed");
+                console.error(data.error || data);
+            }
+        })
+        .catch(error => {
+            showStatus("Save failed");
+            console.error(error);
+        });
+    }
+
+    document.querySelectorAll(".sortable-region").forEach(function (tbody) {
+        new Sortable(tbody, {
+            group: "run-sheet-regions",
+            animation: 150,
+            draggable: ".run-stop-row",
+            ghostClass: "sortable-ghost",
+            chosenClass: "sortable-chosen",
+
+            onEnd: function (event) {
+                keepDetailRowWithStop(event.item);
+                saveRunSheetOrder();
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

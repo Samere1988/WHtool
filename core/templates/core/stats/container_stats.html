@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .stat-card {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #0d2c54;
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .container-table th {
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        color: #6c757d;
+        background: #f8f9fa;
+    }
+
+    .container-table td {
+        vertical-align: middle;
+    }
+
+    .summary-pill {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #e9ecef;
+        padding: 0.65rem 0;
+    }
+
+    .summary-pill:last-child {
+        border-bottom: none;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-2 flex-wrap gap-3">
+    <div>
+        <a href="{% url 'stats' %}" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="bi bi-arrow-left"></i> Back to Stats
+        </a>
+
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-box-seam me-2"></i>Container Stats
+        </h2>
+
+        <p class="text-muted small mb-0">
+            Container photo records by month, employee, and unload location.
+        </p>
+    </div>
+
+    <form method="get" class="d-flex align-items-center gap-2 bg-white p-2 rounded shadow-sm border">
+        <label class="fw-bold text-primary small mb-0">View:</label>
+
+        <select name="month" class="form-select fw-bold" onchange="this.form.submit()">
+            <option value="all" {% if selected_month == "all" %}selected{% endif %}>
+                All Months
+            </option>
+
+            {% for month_date in month_options %}
+                <option value="{{ month_date|date:'Y-m' }}"
+                        {% if selected_month == month_date|date:'Y-m' %}selected{% endif %}>
+                    {{ month_date|date:"F Y" }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="card stat-card">
+            <div class="card-body p-4">
+                <div class="stat-label">Containers</div>
+                <div class="stat-value">{{ total_containers }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <div class="card stat-card">
+            <div class="card-body p-4">
+                <div class="stat-label">Photos</div>
+                <div class="stat-value">{{ total_photos }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <div class="card stat-card">
+            <div class="card-body p-4">
+                <div class="stat-label">Selected Period</div>
+                <div class="stat-value" style="font-size: 1.35rem;">
+                    {% if selected_month == "all" %}
+                        All Months
+                    {% else %}
+                        {{ selected_month }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12 col-lg-6">
+        <div class="card stat-card h-100">
+            <div class="card-header bg-dark text-white fw-bold">
+                Containers by Location
+            </div>
+            <div class="card-body">
+                {% for location, count in location_counts.items %}
+                    <div class="summary-pill">
+                        <span class="fw-bold">{{ location }}</span>
+                        <span class="badge bg-primary fs-6">{{ count }}</span>
+                    </div>
+                {% empty %}
+                    <p class="text-muted mb-0">No location data found.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card stat-card h-100">
+            <div class="card-header bg-dark text-white fw-bold">
+                Containers by Employee
+            </div>
+            <div class="card-body">
+                {% for employee, count in employee_counts.items %}
+                    <div class="summary-pill">
+                        <span class="fw-bold">{{ employee }}</span>
+                        <span class="badge bg-success fs-6">{{ count }}</span>
+                    </div>
+                {% empty %}
+                    <p class="text-muted mb-0">No employee data found.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card stat-card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0">Container Records</h5>
+        <span class="text-muted small">{{ total_containers }} record{{ total_containers|pluralize }}</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 container-table">
+            <thead>
+                <tr>
+                    <th>Date Unloaded</th>
+                    <th>Container Number</th>
+                    <th>Unloaded By</th>
+                    <th>Unloaded At</th>
+                    <th class="text-center">Photos</th>
+                    <th class="text-center">Open</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for container in containers %}
+                <tr>
+                    <td class="fw-bold">
+                        {{ container.date_received|date:"M d, Y" }}
+                    </td>
+
+                    <td class="fw-bold text-primary">
+                        {{ container.container_number }}
+                    </td>
+
+                    <td>
+                        {{ container.unloaded_by|default:"-" }}
+                    </td>
+
+                    <td>
+                        {{ container.unloaded_at|default:"-" }}
+                    </td>
+
+                    <td class="text-center">
+                        <span class="badge bg-dark">
+                            {{ container.photo_count }}
+                        </span>
+                    </td>
+
+                    <td class="text-center">
+                        <a href="{% url 'container_detail' container.pk %}"
+                           class="btn btn-sm btn-outline-primary fw-bold">
+                            View
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">
+                        No container records found for this period.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

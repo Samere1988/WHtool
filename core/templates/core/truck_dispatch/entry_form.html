@@ -68,11 +68,12 @@
 
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">Customer Name</label>
+                                    <label class="form-label fw-bold">Customer Name / Ship To</label>
                                     <input type="text"
+                                           name="customer_name"
                                            class="form-control form-control-lg"
-                                           value="{{ customer.customer_name }}"
-                                           readonly>
+                                           value="{% if order %}{{ order.customer_name }}{% else %}{{ customer.customer_name }}{% endif %}"
+                                           required>
                                 </div>
 
                                 <div class="col-md-6">

@@ -12,7 +12,8 @@ from django.conf import settings
 from django.db import transaction
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.db.models import Sum, Count, Max
 from django.utils import timezone, dateparse
@@ -26,7 +27,8 @@ from .models import (
     CustomerList, RunSheet, OrderArchive, FinalizedRunSheet,
     DailyRunSheetCommit, DailyRunSheetEntry, EmployeeDailyStat,
     OutboundLoad, OutboundPhoto, Vendor, PickupLog,
-    PickupPhotoLog, PickupPhoto, Container, ContainerPhoto
+    PickupPhotoLog, PickupPhoto, Container, ContainerPhoto,RegionRunInfo,
+    BillOfLading, BillOfLadingCustomer, BillOfLadingLine
 )
 
 
@@ -507,6 +509,24 @@ def run_sheet(request):
     """
     selected_shipping_date = get_selected_shipping_date(request)
 
+    all_day_orders = RunSheet.objects.filter(
+        shipping_date=selected_shipping_date,
+    )
+
+    daily_totals_data = all_day_orders.aggregate(
+        weight=Sum("weight"),
+        skids=Sum("skids"),
+        bundles=Sum("bundles"),
+        coils=Sum("coils"),
+    )
+
+    daily_totals = {
+        "weight": daily_totals_data["weight"] or 0,
+        "skids": daily_totals_data["skids"] or 0,
+        "bundles": daily_totals_data["bundles"] or 0,
+        "coils": daily_totals_data["coils"] or 0,
+    }
+
     grouped_orders = {}
 
     for region in TRANSPORT_REGIONS:
@@ -520,18 +540,63 @@ def run_sheet(request):
             "id",
         )
 
-        if orders.exists():
-            grouped_stops = build_grouped_run_sheet_orders(orders)
+        grouped_stops = build_grouped_run_sheet_orders(orders)
 
-            grouped_orders[region] = {
-                "orders": grouped_stops,
-                "totals": {
-                    "weight": sum(order.weight or 0 for order in orders),
-                    "skids": sum(order.skids or 0 for order in orders),
-                    "bundles": sum(order.bundles or 0 for order in orders),
-                    "coils": sum(order.coils or 0 for order in orders),
-                },
-            }
+        region_info = RegionRunInfo.objects.filter(
+            shipping_date=selected_shipping_date,
+            region=region,
+        ).first()
+
+        first_driver_row = orders.exclude(
+            transport_driver__isnull=True
+        ).exclude(
+            transport_driver=""
+        ).order_by("load_index", "id").first()
+
+        if not first_driver_row:
+            first_driver_row = orders.exclude(
+                driver_name__isnull=True
+            ).exclude(
+                driver_name=""
+            ).order_by("load_index", "id").first()
+
+        first_start_row = orders.exclude(
+            transport_start_time__isnull=True
+        ).exclude(
+            transport_start_time=""
+        ).order_by("load_index", "id").first()
+
+        region_driver_name = ""
+        region_start_time = ""
+
+        # Manual region-level driver info comes first.
+        if region_info:
+            region_driver_name = region_info.driver_name or ""
+            region_start_time = region_info.start_time or ""
+
+        # If no manual driver exists, fall back to imported/order-level driver.
+        if not region_driver_name and first_driver_row:
+            region_driver_name = (
+                first_driver_row.transport_driver
+                or first_driver_row.driver_name
+                or ""
+            )
+
+        # If no manual start time exists, fall back to imported start time.
+        if not region_start_time and first_start_row:
+            region_start_time = first_start_row.transport_start_time or ""
+
+        grouped_orders[region] = {
+            "orders": grouped_stops,
+            "driver_name": region_driver_name,
+            "start_time": region_start_time,
+            "totals": {
+                "weight": sum(order.weight or 0 for order in orders),
+                "skids": sum(order.skids or 0 for order in orders),
+                "bundles": sum(order.bundles or 0 for order in orders),
+                "coils": sum(order.coils or 0 for order in orders),
+            },
+        }
 
     return render(
         request,
@@ -540,12 +605,344 @@ def run_sheet(request):
             "grouped_orders": grouped_orders,
             "regions": TRANSPORT_REGIONS,
             "selected_shipping_date": selected_shipping_date,
+            "daily_totals": daily_totals,
         },
     )
+@login_required
+def stats_home(request):
+    return render(request, "core/stats/stats_home.html")
 
 
 @login_required
-def stats(request):
+def container_stats(request):
+    selected_month = request.GET.get("month", "all")
+
+    containers = Container.objects.annotate(
+        photo_count=Count("photos")
+    ).order_by("-date_received", "-id")
+
+    month_options = (
+        Container.objects
+        .dates("date_received", "month", order="DESC")
+    )
+
+    if selected_month != "all":
+        try:
+            year, month = selected_month.split("-")
+            containers = containers.filter(
+                date_received__year=int(year),
+                date_received__month=int(month),
+            )
+        except ValueError:
+            selected_month = "all"
+
+    total_containers = containers.count()
+    total_photos = sum(container.photo_count for container in containers)
+
+    location_counts = {}
+    employee_counts = {}
+
+    for container in containers:
+        location = container.unloaded_at or "Not set"
+        employee = container.unloaded_by or "Not set"
+
+        location_counts[location] = location_counts.get(location, 0) + 1
+        employee_counts[employee] = employee_counts.get(employee, 0) + 1
+
+    context = {
+        "containers": containers,
+        "month_options": month_options,
+        "selected_month": selected_month,
+        "total_containers": total_containers,
+        "total_photos": total_photos,
+        "location_counts": location_counts,
+        "employee_counts": employee_counts,
+    }
+
+    return render(request, "core/stats/container_stats.html", context)
+
+@login_required
+def daily_run_stats(request):
+    today = timezone.localtime(timezone.now()).date()
+
+    selected_month_str = request.GET.get("month")
+
+    if selected_month_str and "-" in selected_month_str:
+        try:
+            year, month = selected_month_str.split("-")
+            start_date = datetime.date(int(year), int(month), 1)
+        except ValueError:
+            start_date = today.replace(day=1)
+    else:
+        start_date = today.replace(day=1)
+
+    if start_date.month == 12:
+        next_month = datetime.date(start_date.year + 1, 1, 1)
+    else:
+        next_month = datetime.date(start_date.year, start_date.month + 1, 1)
+
+    end_date = next_month - timedelta(days=1)
+    selected_month = start_date.strftime("%Y-%m")
+    period_label = start_date.strftime("%B %Y")
+
+    month_options = list(
+        RunSheet.objects
+        .dates("shipping_date", "month", order="DESC")
+    )
+
+    # Always include the current selected month, even if it has no data yet.
+    if start_date not in month_options:
+        month_options.insert(0, start_date)
+
+    entries = RunSheet.objects.filter(
+        shipping_date__gte=start_date,
+        shipping_date__lte=end_date,
+    )
+
+    shipped_entries = entries.filter(
+        is_pickup=False,
+        is_return=False,
+    )
+
+    pickup_entries = entries.filter(is_pickup=True)
+    return_entries = entries.filter(is_return=True)
+
+    def get_top_region(queryset):
+        top = (
+            queryset
+            .values("region")
+            .annotate(
+                weight=Sum("weight"),
+                skids=Sum("skids"),
+                bundles=Sum("bundles"),
+                coils=Sum("coils"),
+                orders=Count("id"),
+            )
+            .order_by("-weight", "region")
+            .first()
+        )
+
+        if not top:
+            return {
+                "region": "No Region",
+                "weight": 0,
+                "skids": 0,
+                "bundles": 0,
+                "coils": 0,
+                "orders": 0,
+            }
+
+        return {
+            "region": top["region"] or "No Region",
+            "weight": top["weight"] or 0,
+            "skids": top["skids"] or 0,
+            "bundles": top["bundles"] or 0,
+            "coils": top["coils"] or 0,
+            "orders": top["orders"] or 0,
+        }
+
+    shipped_summary_data = shipped_entries.aggregate(
+        total_weight=Sum("weight"),
+        total_skids=Sum("skids"),
+        total_bundles=Sum("bundles"),
+        total_coils=Sum("coils"),
+    )
+
+    pickup_summary_data = pickup_entries.aggregate(
+        total_weight=Sum("weight"),
+        total_skids=Sum("skids"),
+        total_bundles=Sum("bundles"),
+        total_coils=Sum("coils"),
+    )
+
+    return_summary_data = return_entries.aggregate(
+        total_weight=Sum("weight"),
+        total_skids=Sum("skids"),
+        total_bundles=Sum("bundles"),
+        total_coils=Sum("coils"),
+    )
+
+    summary = {
+        "weight": shipped_summary_data["total_weight"] or 0,
+        "skids": shipped_summary_data["total_skids"] or 0,
+        "bundles": shipped_summary_data["total_bundles"] or 0,
+        "coils": shipped_summary_data["total_coils"] or 0,
+        "orders": shipped_entries.count(),
+    }
+
+    pickup_summary = {
+        "weight": pickup_summary_data["total_weight"] or 0,
+        "skids": pickup_summary_data["total_skids"] or 0,
+        "bundles": pickup_summary_data["total_bundles"] or 0,
+        "coils": pickup_summary_data["total_coils"] or 0,
+        "count": pickup_entries.count(),
+    }
+
+    return_summary = {
+        "weight": return_summary_data["total_weight"] or 0,
+        "skids": return_summary_data["total_skids"] or 0,
+        "bundles": return_summary_data["total_bundles"] or 0,
+        "coils": return_summary_data["total_coils"] or 0,
+        "count": return_entries.count(),
+    }
+
+    region_rows = (
+        shipped_entries
+        .values("region")
+        .annotate(
+            weight=Sum("weight"),
+            skids=Sum("skids"),
+            bundles=Sum("bundles"),
+            coils=Sum("coils"),
+            orders=Count("id"),
+        )
+        .order_by("-weight", "region")
+    )
+
+    top_month_region = get_top_region(shipped_entries)
+    top_pickup_region = get_top_region(pickup_entries)
+    top_return_region = get_top_region(return_entries)
+
+    day_summary_rows = (
+        shipped_entries
+        .values("shipping_date")
+        .annotate(
+            weight=Sum("weight"),
+            skids=Sum("skids"),
+            bundles=Sum("bundles"),
+            coils=Sum("coils"),
+            orders=Count("id"),
+        )
+        .order_by("-weight", "shipping_date")
+    )
+
+    day_rows = []
+
+    for row in day_summary_rows:
+        day_date = row["shipping_date"]
+        day_entries = shipped_entries.filter(shipping_date=day_date)
+
+        day_regions = (
+            day_entries
+            .values("region")
+            .annotate(
+                weight=Sum("weight"),
+                skids=Sum("skids"),
+                bundles=Sum("bundles"),
+                coils=Sum("coils"),
+                orders=Count("id"),
+            )
+            .order_by("-weight", "region")
+        )
+
+        day_rows.append({
+            "date": day_date,
+            "collapse_id": f"day-{day_date.strftime('%Y%m%d')}",
+            "orders": row["orders"],
+            "weight": row["weight"] or 0,
+            "skids": row["skids"] or 0,
+            "bundles": row["bundles"] or 0,
+            "coils": row["coils"] or 0,
+            "regions": day_regions,
+            "top_region": get_top_region(day_entries),
+        })
+
+    week_rows = []
+    week_start = start_date - timedelta(days=start_date.weekday())
+
+    while week_start <= end_date:
+        week_end = week_start + timedelta(days=6)
+
+        range_start = max(week_start, start_date)
+        range_end = min(week_end, end_date)
+
+        week_entries = shipped_entries.filter(
+            shipping_date__gte=range_start,
+            shipping_date__lte=range_end,
+        )
+
+        if week_entries.exists():
+            week_summary = week_entries.aggregate(
+                weight=Sum("weight"),
+                skids=Sum("skids"),
+                bundles=Sum("bundles"),
+                coils=Sum("coils"),
+            )
+
+            week_regions = (
+                week_entries
+                .values("region")
+                .annotate(
+                    weight=Sum("weight"),
+                    skids=Sum("skids"),
+                    bundles=Sum("bundles"),
+                    coils=Sum("coils"),
+                    orders=Count("id"),
+                )
+                .order_by("-weight", "region")
+            )
+
+            week_rows.append({
+                "week_start": week_start,
+                "range_start": range_start,
+                "range_end": range_end,
+                "collapse_id": f"week-{week_start.strftime('%Y%m%d')}",
+                "orders": week_entries.count(),
+                "weight": week_summary["weight"] or 0,
+                "skids": week_summary["skids"] or 0,
+                "bundles": week_summary["bundles"] or 0,
+                "coils": week_summary["coils"] or 0,
+                "regions": week_regions,
+                "top_region": get_top_region(week_entries),
+            })
+
+        week_start += timedelta(days=7)
+
+    week_rows.sort(key=lambda row: row["weight"], reverse=True)
+
+    pickup_rows = pickup_entries.order_by(
+        "shipping_date",
+        "region",
+        "customer_name",
+        "order_number",
+        "id",
+    )
+
+    return_rows = return_entries.order_by(
+        "shipping_date",
+        "region",
+        "customer_name",
+        "order_number",
+        "id",
+    )
+
+    context = {
+        "period_label": period_label,
+        "selected_month": selected_month,
+        "month_options": month_options,
+        "start_date": start_date,
+        "end_date": end_date,
+
+        "summary": summary,
+        "pickup_summary": pickup_summary,
+        "return_summary": return_summary,
+
+        "region_rows": region_rows,
+        "day_rows": day_rows,
+        "week_rows": week_rows,
+
+        "pickup_rows": pickup_rows,
+        "return_rows": return_rows,
+
+        "top_month_region": top_month_region,
+        "top_pickup_region": top_pickup_region,
+        "top_return_region": top_return_region,
+    }
+
+    return render(request, "core/stats/daily_run_stats.html", context)
+
+@login_required
+def employee_stats(request):
     """KPIs and Staff Performance Tracking."""
     now = timezone.localtime(timezone.now())
     active_tab = request.GET.get('tab', 'day')
@@ -604,8 +1001,7 @@ def stats(request):
         'weekly': calculate_performance(orders_week + pickups_week),
         'monthly': calculate_performance(orders_month + pickups_month),
     }
-    return render(request, 'core/stats.html', context)
-
+    return render(request, 'core/stats/stats.html', context)
 
 # ==========================================
 # --- 3. DISPATCH & ORDER ENTRY ---
@@ -652,8 +1048,8 @@ def entry_form(request, customer_id):
         order_num = request.POST.get('order_number', '').strip()
         if order_num and not order_num.upper().startswith('W'):
             order_num = f"W{order_num}"
-
         closing_time = request.POST.get('closing_time', '').strip()
+        custom_customer_name = request.POST.get('customer_name', '').strip() or customer.customer_name
         custom_address = request.POST.get('address', '').strip() or customer.address
         custom_city = request.POST.get('city', '').strip() or customer.city
         custom_postal = request.POST.get('postal_code', '').strip() or getattr(customer, 'postal_code', '')
@@ -721,7 +1117,7 @@ def entry_form(request, customer_id):
         RunSheet.objects.create(
             customer_id=customer.customer_id,
             shipping_date=selected_shipping_date,
-            customer_name=customer.customer_name,
+            customer_name=custom_customer_name,
             address=custom_address,
             city=custom_city,
             postal_code=custom_postal,
@@ -820,10 +1216,12 @@ def edit_order(request, pk):
         total_prep_str = ", ".join(sorted(total_prep_list)) if total_prep_list else run_item.prepared_by or "Unknown"
 
         run_item.order_number = order_num
-        run_item.address = request.POST.get('address', run_item.address)
-        run_item.city = request.POST.get('city', run_item.city)
-        run_item.postal_code = request.POST.get('postal_code', run_item.postal_code)
-        run_item.region = request.POST.get('region', run_item.region)
+        run_item.customer_name = request.POST.get('customer_name',
+                                                  run_item.customer_name).strip() or run_item.customer_name
+        run_item.address = request.POST.get('address', run_item.address).strip() or run_item.address
+        run_item.city = request.POST.get('city', run_item.city).strip() or run_item.city
+        run_item.postal_code = request.POST.get('postal_code', run_item.postal_code).strip() or run_item.postal_code
+        run_item.region = request.POST.get('region', run_item.region).strip() or run_item.region
         run_item.shipping_date = posted_shipping_date
         run_item.closing_time = closing_time
         run_item.weight = w
@@ -1054,27 +1452,92 @@ def finalize_run_sheet(request):
             "order_number",
             "id",
         )
+
         if orders.exists():
             cust_ids = orders.values_list('customer_id', flat=True)
+
             detailed_archive = OrderArchive.objects.filter(
                 customer_id__in=cust_ids,
                 created_at__gte=today_start,
             ).order_by('created_at')
+
+            delivery_orders = [
+                o for o in orders
+                if not o.is_pickup and not o.is_return
+            ]
+
+            region_info = RegionRunInfo.objects.filter(
+                shipping_date=shipping_date,
+                region=region,
+            ).first()
+
+            first_driver_row = orders.exclude(
+                transport_driver__isnull=True
+            ).exclude(
+                transport_driver=""
+            ).order_by("load_index", "id").first()
+
+            if not first_driver_row:
+                first_driver_row = orders.exclude(
+                    driver_name__isnull=True
+                ).exclude(
+                    driver_name=""
+                ).order_by("load_index", "id").first()
+
+            first_start_row = orders.exclude(
+                transport_start_time__isnull=True
+            ).exclude(
+                transport_start_time=""
+            ).order_by("load_index", "id").first()
+
+            region_driver_name = ""
+            region_start_time = ""
+
+            # Manual region-level driver/start time comes first.
+            if region_info:
+                region_driver_name = region_info.driver_name or ""
+                region_start_time = region_info.start_time or ""
+
+            # Fall back to transport/imported driver.
+            if not region_driver_name and first_driver_row:
+                region_driver_name = (
+                    first_driver_row.transport_driver
+                    or first_driver_row.driver_name
+                    or ""
+                )
+
+            # Fall back to transport/imported start time.
+            if not region_start_time and first_start_row:
+                region_start_time = first_start_row.transport_start_time or ""
+
             grouped_orders[region] = {
                 'orders': orders,
                 'detailed_archive': detailed_archive,
+                'driver_name': region_driver_name,
+                'start_time': region_start_time,
+
+                # These totals include everything, in case you still need them elsewhere.
                 'totals': {
                     'weight': sum(o.weight or 0 for o in orders),
                     'skids': sum(o.skids or 0 for o in orders),
                     'bundles': sum(o.bundles or 0 for o in orders),
                     'coils': sum(o.coils or 0 for o in orders),
                 },
+
+                # These totals exclude pickups and returns.
+                # Use these on the print page.
+                'delivery_totals': {
+                    'weight': sum(o.weight or 0 for o in delivery_orders),
+                    'skids': sum(o.skids or 0 for o in delivery_orders),
+                    'bundles': sum(o.bundles or 0 for o in delivery_orders),
+                    'coils': sum(o.coils or 0 for o in delivery_orders),
+                },
             }
+
     return render(request, 'core/finalize_view.html', {
         'grouped_orders': grouped_orders,
         'shipping_date': shipping_date,
     })
-
 
 @login_required
 def run_sheet_history(request):
@@ -1806,21 +2269,34 @@ def add_container(request):
     if request.method == 'POST':
         container_num = request.POST.get('container_number', '').strip().upper()
         unloaded_by = request.POST.get('unloaded_by', '').strip()
+        unloaded_at = request.POST.get('unloaded_at', '').strip()
         date_received_str = request.POST.get('date_received', '').strip()
         images = request.FILES.getlist('photos')
 
         selected_date = parse_date(date_received_str) if date_received_str else timezone.now().date()
 
-        if container_num and images:
+        if container_num and images and unloaded_at:
             container, created = Container.objects.get_or_create(
                 container_number=container_num,
                 date_received=selected_date,
-                defaults={"unloaded_by": unloaded_by}
+                defaults={
+                    "unloaded_by": unloaded_by,
+                    "unloaded_at": unloaded_at,
+                }
             )
+
+            fields_to_update = []
 
             if unloaded_by and container.unloaded_by != unloaded_by:
                 container.unloaded_by = unloaded_by
-                container.save(update_fields=["unloaded_by"])
+                fields_to_update.append("unloaded_by")
+
+            if unloaded_at and container.unloaded_at != unloaded_at:
+                container.unloaded_at = unloaded_at
+                fields_to_update.append("unloaded_at")
+
+            if fields_to_update:
+                container.save(update_fields=fields_to_update)
 
             for image in images:
                 ContainerPhoto.objects.create(container=container, image=image)
@@ -1828,7 +2304,7 @@ def add_container(request):
             messages.success(request, f"Successfully uploaded {len(images)} photos.")
             return redirect('container_detail', pk=container.pk)
 
-        messages.error(request, "Provide a container number and photo.")
+        messages.error(request, "Provide a container number, unloaded location, and photo.")
 
     return render(
         request,
@@ -1838,7 +2314,6 @@ def add_container(request):
             "today": timezone.now().date(),
         }
     )
-
 
 @login_required
 def upload_more_container_photos(request, pk):
@@ -2032,3 +2507,339 @@ def delete_pickup_individual_photo(request, photo_id):
     log_id = photo.log.pk
     photo.delete()
     return redirect('pickup_photo_detail', pk=log_id)
+
+@login_required
+@require_POST
+def reorder_run_sheet(request):
+    """
+    Saves drag-and-drop ordering for the selected shipping date.
+    Each dragged visible stop may represent one or multiple RunSheet rows.
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON."}, status=400)
+
+    shipping_date = parse_date(str(payload.get("shipping_date", "")))
+    regions = payload.get("regions", [])
+
+    if not shipping_date:
+        return JsonResponse({"success": False, "error": "Missing shipping date."}, status=400)
+
+    if not isinstance(regions, list):
+        return JsonResponse({"success": False, "error": "Invalid regions payload."}, status=400)
+
+    valid_regions = set(TRANSPORT_REGIONS)
+
+    try:
+        with transaction.atomic():
+            for region_data in regions:
+                region = normalize_transport_region(region_data.get("region", ""))
+
+                if region not in valid_regions:
+                    continue
+
+                stops = region_data.get("stops", [])
+
+                for index, stop in enumerate(stops, start=1):
+                    order_ids = stop.get("order_ids", [])
+
+                    if not isinstance(order_ids, list):
+                        continue
+
+                    clean_ids = []
+                    for order_id in order_ids:
+                        try:
+                            clean_ids.append(int(order_id))
+                        except (TypeError, ValueError):
+                            pass
+
+                    if not clean_ids:
+                        continue
+
+                    RunSheet.objects.filter(
+                        id__in=clean_ids,
+                        shipping_date=shipping_date,
+                    ).update(
+                        region=region,
+                        load_index=index,
+                    )
+
+        return JsonResponse({"success": True})
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+def update_region_driver(request):
+    if request.method != "POST":
+        return redirect_run_sheet_for_date(get_selected_shipping_date(request))
+
+    selected_shipping_date = get_selected_shipping_date(request)
+
+    region = request.POST.get("region", "").strip()
+    driver_name = request.POST.get("driver_name", "").strip()
+    start_time = request.POST.get("start_time", "").strip()
+
+    if not region:
+        messages.error(request, "Region is required.")
+        return redirect_run_sheet_for_date(selected_shipping_date)
+
+    RegionRunInfo.objects.update_or_create(
+        shipping_date=selected_shipping_date,
+        region=region,
+        defaults={
+            "driver_name": driver_name,
+            "start_time": start_time,
+        }
+    )
+
+    RunSheet.objects.filter(
+        shipping_date=selected_shipping_date,
+        region=region,
+    ).update(
+        driver_name=driver_name,
+        transport_driver=driver_name,
+        transport_start_time=start_time,
+    )
+
+    messages.success(request, f"Updated driver/start time for {region}.")
+    return redirect_run_sheet_for_date(selected_shipping_date)
+
+@login_required
+def bol(request, pk=None):
+    """
+    Create/edit/print Bill of Lading.
+    Uses the bilingual Québec BOL layout and saves each BOL for later editing.
+    """
+    bill = None
+
+    if pk:
+        bill = get_object_or_404(BillOfLading, pk=pk)
+
+    customers = BillOfLadingCustomer.objects.all().order_by("name")
+    saved_bills = BillOfLading.objects.all().order_by("-bol_date", "-id")[:25]
+
+    def clean_money(value):
+        return (value or "").strip()
+
+    def clean_text(value):
+        return (value or "").strip()
+
+    def number_value(value):
+        try:
+            return float(str(value or "0").replace(",", "").strip() or 0)
+        except ValueError:
+            return 0
+
+    if request.method == "POST":
+        bol_number = clean_text(request.POST.get("bol_number"))
+        bol_date_raw = clean_text(request.POST.get("bol_date"))
+
+        bol_date = parse_date(bol_date_raw) if bol_date_raw else timezone.localtime(timezone.now()).date()
+        if not bol_date:
+            bol_date = timezone.localtime(timezone.now()).date()
+
+        consignee_name = clean_text(request.POST.get("consignee_name"))
+
+        consignee_street = clean_text(request.POST.get("consignee_street"))
+        consignee_city = clean_text(request.POST.get("consignee_city"))
+        consignee_province = clean_text(request.POST.get("consignee_province"))
+        consignee_postal_code = clean_text(request.POST.get("consignee_postal_code"))
+        save_consignee = request.POST.get("save_consignee") == "on"
+
+        if save_consignee and consignee_name:
+            existing_customer = BillOfLadingCustomer.objects.filter(
+                name__iexact=consignee_name
+            ).first()
+
+            if existing_customer:
+                existing_customer.address = consignee_street
+                existing_customer.city = consignee_city
+                existing_customer.province = consignee_province
+                existing_customer.postal_code = consignee_postal_code
+                existing_customer.save()
+            else:
+                BillOfLadingCustomer.objects.create(
+                    name=consignee_name,
+                    address=consignee_street,
+                    city=consignee_city,
+                    province=consignee_province,
+                    postal_code=consignee_postal_code,
+                )
+
+        consignee_city_line = " ".join(
+            part for part in [consignee_city, consignee_province, consignee_postal_code]
+            if part
+        )
+
+        consignee_address = "\n".join(
+            part for part in [consignee_street, consignee_city_line]
+            if part
+        )
+
+        consignor_name = clean_text(request.POST.get("consignor_name")) or "Diversified Specialty Metals"
+
+        consignor_street = clean_text(request.POST.get("consignor_street")) or "20 Hymus"
+        consignor_city = clean_text(request.POST.get("consignor_city")) or "Pointe-Claire"
+        consignor_province = clean_text(request.POST.get("consignor_province")) or "QC"
+        consignor_postal_code = clean_text(request.POST.get("consignor_postal_code")) or "H9R 1C9"
+
+        consignor_city_line = " ".join(
+            part for part in [consignor_city, consignor_province, consignor_postal_code]
+            if part
+        )
+
+        consignor_address = "\n".join(
+            part for part in [consignor_street, consignor_city_line]
+            if part
+        )
+
+        consignor_account_number = clean_text(request.POST.get("consignor_account_number")) or ""
+
+        declared_value = clean_money(request.POST.get("declared_value"))
+
+        freight_collect = request.POST.get("freight_collect") == "on"
+        freight_prepaid = request.POST.get("freight_prepaid") == "on"
+        cod = request.POST.get("cod") == "on"
+
+        cod_amount = clean_money(request.POST.get("cod_amount"))
+        other_charges = clean_money(request.POST.get("other_charges"))
+        total_charges = clean_money(request.POST.get("total_charges"))
+
+        if bill is None:
+            bill = BillOfLading.objects.create(
+                bol_number=bol_number,
+                bol_date=bol_date,
+                consignor_name=consignor_name,
+                consignor_address=consignor_address,
+                consignor_account_number=consignor_account_number,
+                consignee_name=consignee_name,
+                consignee_address=consignee_address,
+                declared_value=declared_value,
+                freight_collect=freight_collect,
+                freight_prepaid=freight_prepaid,
+                cod=cod,
+                cod_amount=cod_amount,
+                other_charges=other_charges,
+                total_charges=total_charges,
+            )
+
+        else:
+            bill.bol_number = bol_number or bill.bol_number
+            bill.bol_date = bol_date
+            bill.consignor_name = consignor_name
+            bill.consignor_address = consignor_address
+            bill.consignor_account_number = consignor_account_number
+            bill.consignee_name = consignee_name
+            bill.consignee_address = consignee_address
+            bill.declared_value = declared_value
+            bill.freight_collect = freight_collect
+            bill.freight_prepaid = freight_prepaid
+            bill.cod = cod
+            bill.cod_amount = cod_amount
+            bill.other_charges = other_charges
+            bill.total_charges = total_charges
+            bill.save()
+
+            bill.lines.all().delete()
+
+        order_po_numbers = request.POST.getlist("order_po_number")
+        descriptions = request.POST.getlist("description")
+        total_packages = request.POST.getlist("total_packages")
+        weights = request.POST.getlist("weight")
+
+        for i in range(len(order_po_numbers)):
+            order_po = clean_text(order_po_numbers[i]) if i < len(order_po_numbers) else ""
+            description = clean_text(descriptions[i]) if i < len(descriptions) else ""
+            packages = clean_text(total_packages[i]) if i < len(total_packages) else ""
+            weight = clean_text(weights[i]) if i < len(weights) else ""
+
+            if order_po or description or packages or weight:
+                BillOfLadingLine.objects.create(
+                    bill=bill,
+                    order_po_number=order_po,
+                    description=description,
+                    total_packages=packages,
+                    weight=weight,
+                )
+
+        messages.success(request, "Bill of Lading saved.")
+        return redirect("bol_edit", pk=bill.pk)
+
+    if bill:
+        existing_lines = list(bill.lines.all())
+    else:
+        existing_lines = []
+
+    line_form_rows = existing_lines[:]
+
+    while len(line_form_rows) < 8:
+        line_form_rows.append(None)
+
+    print_lines = existing_lines[:]
+    while len(print_lines) < 8:
+        print_lines.append(None)
+
+    total_packages_sum = sum(number_value(line.total_packages) for line in existing_lines)
+    total_weight_sum = sum(number_value(line.weight) for line in existing_lines)
+
+    if total_packages_sum.is_integer():
+        total_packages_sum = int(total_packages_sum)
+
+    if total_weight_sum.is_integer():
+        total_weight_sum = int(total_weight_sum)
+
+    def split_address(address):
+        lines = (address or "").splitlines()
+        street = lines[0] if len(lines) > 0 else ""
+        city = ""
+        province = ""
+        postal_code = ""
+
+        if len(lines) > 1:
+            parts = lines[1].split()
+            if len(parts) >= 3:
+                postal_code = " ".join(parts[-2:])
+                province = parts[-3]
+                city = " ".join(parts[:-3])
+            else:
+                city = lines[1]
+
+        return {
+            "street": street,
+            "city": city,
+            "province": province,
+            "postal_code": postal_code,
+        }
+
+    if bill:
+        consignor_address_parts = split_address(bill.consignor_address)
+        consignee_address_parts = split_address(bill.consignee_address)
+    else:
+        consignor_address_parts = {
+            "street": "20 Hymus",
+            "city": "Pointe-Claire",
+            "province": "QC",
+            "postal_code": "H9R 1C9",
+        }
+        consignee_address_parts = {
+            "street": "",
+            "city": "",
+            "province": "",
+            "postal_code": "",
+        }
+
+    return render(request, "core/bol/bol.html", {
+        "bill": bill,
+        "customers": customers,
+        "saved_bills": saved_bills,
+        "today": timezone.localtime(timezone.now()).date(),
+        "line_form_rows": line_form_rows,
+        "print_lines": print_lines,
+        "total_packages_sum": total_packages_sum,
+        "total_weight_sum": total_weight_sum,
+        "consignor_address_parts": consignor_address_parts,
+        "consignee_address_parts": consignee_address_parts,
+    })

@@ -258,6 +258,7 @@ class Container(models.Model):
     container_number = models.CharField(max_length=100)
     date_received = models.DateTimeField(auto_now_add=True)
     unloaded_by = models.CharField(max_length=100, blank=True, null=True)
+    unloaded_at = models.CharField(max_length=20, blank=True, null=True)
 
 
     def __str__(self):
@@ -336,3 +337,58 @@ class PickupPhoto(models.Model):
     log = models.ForeignKey(PickupPhotoLog, related_name='photos', on_delete=models.CASCADE)
     image = models.ImageField(upload_to='pickup_photos/%Y/%m/%d/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+class RegionRunInfo(models.Model):
+    shipping_date = models.DateField()
+    region = models.CharField(max_length=100)
+
+    driver_name = models.CharField(max_length=100, blank=True, null=True)
+    start_time = models.CharField(max_length=50, blank=True, null=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("shipping_date", "region")
+        ordering = ["shipping_date", "region"]
+
+    def __str__(self):
+        return f"{self.shipping_date} - {self.region} - {self.driver_name or 'Unassigned'}"
+
+
+class BillOfLadingCustomer(models.Model):
+    name = models.CharField(max_length=255)
+    address = models.TextField(blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    province = models.CharField(max_length=50, blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
+    account_number = models.CharField(max_length=100, blank=True)
+
+
+class BillOfLading(models.Model):
+    bol_number = models.CharField(max_length=100, blank=True)
+    bol_date = models.DateField()
+    consignor_name = models.CharField(max_length=255, blank=True)
+    consignor_address = models.TextField(blank=True)
+    consignor_account_number = models.CharField(max_length=100, blank=True)
+
+    consignee_name = models.CharField(max_length=255, blank=True)
+    consignee_address = models.TextField(blank=True)
+
+    declared_value = models.CharField(max_length=100, blank=True)
+    freight_collect = models.BooleanField(default=False)
+    freight_prepaid = models.BooleanField(default=False)
+    cod = models.BooleanField(default=False)
+    cod_amount = models.CharField(max_length=100, blank=True)
+    other_charges = models.CharField(max_length=100, blank=True)
+    total_charges = models.CharField(max_length=100, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class BillOfLadingLine(models.Model):
+    bill = models.ForeignKey(BillOfLading, related_name="lines", on_delete=models.CASCADE)
+    order_po_number = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+    total_packages = models.CharField(max_length=50, blank=True)
+    weight = models.CharField(max_length=50, blank=True)

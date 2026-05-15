@@ -10,7 +10,10 @@ urlpatterns = [
     path('photos/', views.photos_home, name='photos_home'),
     path('', views.home, name='home'),
     path('run-sheet/', views.run_sheet, name='run_sheet'),
-    path('stats/', views.stats, name='stats'),
+    path('stats/', views.stats_home, name='stats'),
+    path('stats/containers/', views.container_stats, name='container_stats'),
+    path('stats/daily-runs/', views.daily_run_stats, name='daily_run_stats'),
+    path('stats/employees/', views.employee_stats, name='employee_stats'),
     path('history/', views.run_sheet_history, name='run_sheet_history'),
 
     # --- RUN SHEET ACTIONS ---
@@ -23,6 +26,8 @@ urlpatterns = [
     path('upload/', transport_commit_views.upload_transport_preview, name='upload_run_sheet'),
     path('clear-sheet/', views.clear_run_sheet, name='clear_run_sheet'),
     path('commit-day/', views.commit_and_clear_day, name='commit_and_clear_day'),
+    path('run-sheet/reorder/', views.reorder_run_sheet, name='reorder_run_sheet'),
+    path('run-sheet/update-region-driver/', views.update_region_driver, name='update_region_driver'),
 
     # --- SAFER TRANSPORT-COMPANY IMPORT WORKFLOW ---
     path('transport-import/upload/', transport_commit_views.upload_transport_preview, name='upload_transport_import'),
@@ -87,4 +92,12 @@ urlpatterns = [
     path('pickup-photos/quick-add/<int:pk>/', views.upload_more_pickup_photos, name='upload_more_pickup_photos'),
     path('pickup-photos/delete-log/<int:pk>/', views.delete_pickup_photo_log, name='delete_pickup_photo_log'),
     path('pickup-photos/delete-photo/<int:photo_id>/', views.delete_pickup_individual_photo, name='delete_pickup_individual_photo'),
+
+
+    # --- BOL ---
+
+
+    path('bol/', views.bol, name='bol'),
+    path('bol/<int:pk>/', views.bol, name='bol_edit'),
+
 ]

@@ -137,13 +137,40 @@
                     <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Edit Container Info</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <label class="form-label fw-bold">Container Number</label>
-                    <input type="text" name="container_number" class="form-control form-control-lg mb-3" value="{{ container.container_number }}" required>
+                    <div class="modal-body p-4">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Date Unloaded</label>
+                            <input type="date"
+                                   name="date_received"
+                                   class="form-control form-control-lg"
+                                   value="{{ container.date_received|date:'Y-m-d' }}"
+                                   required>
+                        </div>
 
-                    <label class="form-label fw-bold">Unloaded By</label>
-                    <input type="text" name="unloaded_by" class="form-control form-control-lg" value="{{ container.unloaded_by|default:'' }}">
-                </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Unloaded By</label>
+                            <input type="text"
+                                   name="unloaded_by"
+                                   class="form-control form-control-lg"
+                                   placeholder="Employee name"
+                                   value="{{ container.unloaded_by|default:'' }}"
+                                   required>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Container Number</label>
+                            <input type="text"
+                                   name="container_number"
+                                   class="form-control form-control-lg"
+                                   placeholder="e.g. MSKU-1234567"
+                                   value="{{ container.container_number }}"
+                                   required>
+                        </div>
+
+                        <div class="alert alert-info mb-0">
+                            To add more photos, use the <strong>Add More Photos</strong> button at the top of this page.
+                        </div>
+                    </div>
                 <div class="modal-footer border-0 pb-4">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary fw-bold">Save Changes</button>

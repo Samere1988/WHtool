@@ -1,0 +1,898 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<style>
+    .bol-app-card {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+    }
+
+    .bol-section-title {
+        font-size: 0.9rem;
+        font-weight: 900;
+        color: #0d2c54;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .bol-label {
+        font-weight: 800;
+        font-size: 0.85rem;
+        color: #495057;
+    }
+
+    .bol-line-row {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 0.75rem;
+        padding: 0.85rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .saved-bol-row {
+        border-bottom: 1px solid #e9ecef;
+        padding: 0.75rem 0;
+    }
+
+    .saved-bol-row:last-child {
+        border-bottom: none;
+    }
+
+    .bol-print-wrapper {
+        background: #ffffff;
+        border-radius: 1rem;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+        padding: 1rem;
+    }
+
+    .bol-page {
+        background: #ffffff;
+        color: #000000;
+        width: 100%;
+        max-width: 1100px;
+        min-height: 780px;
+        margin: 0 auto 1rem auto;
+        padding: 18px;
+        border: 1px solid #000;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 11px;
+        line-height: 1.15;
+    }
+
+    .bol-page h1 {
+        font-size: 18px;
+        font-weight: 900;
+        text-align: center;
+        margin: 0;
+        text-transform: uppercase;
+    }
+
+    .bol-subtitle {
+        text-align: center;
+        font-size: 10px;
+        margin-bottom: 8px;
+    }
+
+    .bol-top-row {
+        display: grid;
+        grid-template-columns: 1fr 220px 180px;
+        border: 1px solid #000;
+        border-bottom: none;
+    }
+
+    .bol-box {
+        border-right: 1px solid #000;
+        padding: 5px;
+        min-height: 42px;
+    }
+
+    .bol-box:last-child {
+        border-right: none;
+    }
+
+    .bol-box-label {
+        font-weight: 900;
+        font-size: 10px;
+        color: #111;
+    }
+
+    .bol-box-value {
+        font-size: 13px;
+        font-weight: 700;
+        margin-top: 5px;
+        white-space: pre-line;
+    }
+
+    .bol-party-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 2fr 130px 150px;
+        border: 1px solid #000;
+        border-bottom: none;
+    }
+
+    .bol-party-row-box {
+        min-height: 56px;
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+        padding: 5px;
+    }
+
+    .bol-party-row-box:nth-child(4n) {
+        border-right: none;
+    }
+
+    .bol-consignee-start {
+        border-top: 3px solid #000;
+    }
+
+    .bol-party-label {
+        font-weight: 900;
+        font-size: 10px;
+        color: #111;
+        margin-bottom: 4px;
+    }
+
+    .bol-party-value {
+        font-size: 12px;
+        font-weight: 700;
+        white-space: pre-line;
+    }
+
+    .bol-statement {
+        border: 1px solid #000;
+        border-bottom: none;
+        padding: 6px;
+        font-size: 9px;
+        text-align: justify;
+    }
+
+    .bol-lines-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    .bol-lines-table th,
+    .bol-lines-table td {
+        border: 1px solid #000;
+        padding: 5px;
+        vertical-align: top;
+    }
+
+    .bol-lines-table th {
+        font-size: 10px;
+        text-align: center;
+        font-weight: 900;
+        background: #f2f2f2;
+    }
+
+    .bol-lines-table td {
+        height: 34px;
+        font-size: 11px;
+    }
+
+    .bol-total-row td {
+        height: 28px;
+        font-weight: 900;
+        background: #f8f8f8;
+    }
+
+    .bol-danger {
+        border: 1px solid #000;
+        border-top: none;
+        padding: 6px;
+    }
+
+    .bol-danger-title {
+        font-weight: 900;
+        text-transform: uppercase;
+        font-size: 10px;
+        margin-bottom: 4px;
+    }
+
+    .bol-bottom-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+    }
+
+    .bol-bottom-box {
+        border-right: 1px solid #000;
+        padding: 6px;
+        min-height: 75px;
+    }
+
+    .bol-bottom-box:last-child {
+        border-right: none;
+    }
+
+    .bol-sign-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        border-left: 1px solid #000;
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+    }
+
+    .bol-sign-box {
+        border-right: 1px solid #000;
+        padding: 6px;
+        min-height: 95px;
+    }
+
+    .bol-sign-box:last-child {
+        border-right: none;
+    }
+
+    .bol-conditions-page {
+        font-size: 8.5px;
+        line-height: 1.1;
+        column-count: 2;
+        column-gap: 20px;
+    }
+
+    .bol-conditions-page h2 {
+        column-span: all;
+        font-size: 16px;
+        text-align: center;
+        margin: 0 0 8px 0;
+    }
+
+    .bol-condition-item {
+        break-inside: avoid;
+        margin-bottom: 6px;
+    }
+
+    .bol-condition-item strong {
+        font-size: 9px;
+    }
+
+    @media print {
+        .navbar,
+        .sidebar,
+        .d-print-none,
+        .bol-form-area,
+        .bol-saved-area,
+        .btn {
+            display: none !important;
+        }
+
+        @page {
+            size: letter landscape;
+            margin: 6mm;
+        }
+
+        body {
+            background: #ffffff !important;
+        }
+
+        .container,
+        .container-fluid {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .bol-print-wrapper {
+            box-shadow: none !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+        }
+
+        .bol-page {
+            max-width: none;
+            width: 100%;
+            min-height: auto;
+            height: 190mm;
+            margin: 0;
+            padding: 8px;
+            border: none;
+            page-break-after: always;
+            overflow: hidden;
+        }
+
+        .bol-page:last-child {
+            page-break-after: auto;
+        }
+    }
+</style>
+
+{% if messages %}
+    <div class="mb-3 d-print-none">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-2 flex-wrap gap-3 d-print-none">
+    <div>
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-file-earmark-text me-2"></i>Bill of Lading
+        </h2>
+        <p class="text-muted small mb-0">
+            Create, save, edit, and print a bilingual Québec Bill of Lading.
+        </p>
+    </div>
+
+    {% if bill %}
+        <button onclick="window.print()" class="btn btn-dark btn-lg fw-bold">
+            <i class="bi bi-printer me-2"></i>Print Finished BOL
+        </button>
+    {% endif %}
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-xl-7 bol-form-area">
+        <div class="card bol-app-card">
+            <div class="card-header bg-dark text-white fw-bold py-3">
+                {% if bill %}Edit Bill of Lading{% else %}New Bill of Lading{% endif %}
+            </div>
+
+            <div class="card-body p-4">
+                <form method="post" id="bolForm">
+                    {% csrf_token %}
+
+                    <div class="bol-section-title">Internal BOL Info</div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label bol-label">BOL Number / Reference</label>
+                            <input type="text"
+                                   name="bol_number"
+                                   class="form-control form-control-lg"
+                                   value="{% if bill %}{{ bill.bol_number }}{% endif %}"
+                                   placeholder="Enter your internal BOL number">
+                            <div class="form-text">
+                                This is for saving/searching only. It will not print on the Bill of Lading.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label bol-label">Shipping Date</label>
+                            <input type="date"
+                                   name="bol_date"
+                                   class="form-control form-control-lg"
+                                   value="{% if bill %}{{ bill.bol_date|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}"
+                                   required>
+                        </div>
+                    </div>
+
+                    <div class="bol-section-title">Shipper / Consignor</div>
+
+                    <div class="border rounded p-3 mb-4 bg-light">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label bol-label">Shipper Name</label>
+                                <input type="text"
+                                       name="consignor_name"
+                                       class="form-control form-control-lg"
+                                       value="{% if bill %}{{ bill.consignor_name }}{% else %}Diversified Specialty Metals{% endif %}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label bol-label">Account Number</label>
+                                <input type="text"
+                                       name="consignor_account_number"
+                                       class="form-control form-control-lg"
+                                       value="{% if bill %}{{ bill.consignor_account_number }}{% endif %}">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label bol-label">Address</label>
+                                <input type="text"
+                                       name="consignor_street"
+                                       class="form-control form-control-lg"
+                                       value="{{ consignor_address_parts.street|default:'20 Hymus' }}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-5">
+                                <label class="form-label bol-label">City</label>
+                                <input type="text"
+                                       name="consignor_city"
+                                       class="form-control form-control-lg"
+                                       value="{{ consignor_address_parts.city|default:'Pointe-Claire' }}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label bol-label">Province</label>
+                                <input type="text"
+                                       name="consignor_province"
+                                       class="form-control form-control-lg"
+                                       value="{{ consignor_address_parts.province|default:'QC' }}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label bol-label">Postal Code</label>
+                                <input type="text"
+                                       name="consignor_postal_code"
+                                       class="form-control form-control-lg"
+                                       value="{{ consignor_address_parts.postal_code|default:'H9R 1C9' }}"
+                                       required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bol-section-title">Receiver / Consignee</div>
+
+                    <div class="border rounded p-3 mb-4 bg-white">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label bol-label">Saved Ship-To Customer</label>
+                                <select class="form-select form-select-lg" id="savedCustomerSelect">
+                                    <option value="">Choose saved customer / ship-to...</option>
+                                    {% for customer in customers %}
+                                        <option value="{{ customer.id }}"
+                                                data-name="{{ customer.name }}"
+                                                data-street="{{ customer.address }}"
+                                                data-city="{{ customer.city }}"
+                                                data-province="{{ customer.province }}"
+                                                data-postal-code="{{ customer.postal_code }}">
+                                            {{ customer.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    Selecting a saved customer fills the receiver fields. You can still edit them for one-off shipments.
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label bol-label">Customer / Receiver Name</label>
+                                <input type="text"
+                                       name="consignee_name"
+                                       id="consigneeName"
+                                       class="form-control form-control-lg"
+                                       value="{% if bill %}{{ bill.consignee_name }}{% endif %}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label bol-label">Address</label>
+                                <input type="text"
+                                       name="consignee_street"
+                                       id="consigneeStreet"
+                                       class="form-control form-control-lg"
+                                       value="{{ consignee_address_parts.street }}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-5">
+                                <label class="form-label bol-label">City</label>
+                                <input type="text"
+                                       name="consignee_city"
+                                       id="consigneeCity"
+                                       class="form-control form-control-lg"
+                                       value="{{ consignee_address_parts.city }}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label bol-label">Province</label>
+                                <input type="text"
+                                       name="consignee_province"
+                                       id="consigneeProvince"
+                                       class="form-control form-control-lg"
+                                       value="{{ consignee_address_parts.province }}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label bol-label">Postal Code</label>
+                                <input type="text"
+                                       name="consignee_postal_code"
+                                       id="consigneePostalCode"
+                                       class="form-control form-control-lg"
+                                       value="{{ consignee_address_parts.postal_code }}"
+                                       required>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           name="save_consignee"
+                                           id="saveConsignee">
+                                    <label class="form-check-label fw-bold" for="saveConsignee">
+                                        Save this consignee / ship-to address for future Bills of Lading
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bol-section-title">Order / PO Lines</div>
+
+                    <div id="bolLines">
+                        {% for line in line_form_rows %}
+                            <div class="bol-line-row">
+                                <div class="row g-2">
+                                    <div class="col-md-3">
+                                        <label class="form-label bol-label">Order / PO Number</label>
+                                        <input type="text"
+                                               name="order_po_number"
+                                               class="form-control"
+                                               value="{% if line %}{{ line.order_po_number }}{% endif %}">
+                                    </div>
+
+                                    <div class="col-md-5">
+                                        <label class="form-label bol-label">Description</label>
+                                        <input type="text"
+                                               name="description"
+                                               class="form-control"
+                                               value="{% if line %}{{ line.description }}{% endif %}">
+                                    </div>
+
+                                    <div class="col-md-2">
+                                        <label class="form-label bol-label">Packages</label>
+                                        <input type="text"
+                                               name="total_packages"
+                                               class="form-control"
+                                               value="{% if line %}{{ line.total_packages }}{% endif %}">
+                                    </div>
+
+                                    <div class="col-md-2">
+                                        <label class="form-label bol-label">Weight</label>
+                                        <input type="text"
+                                               name="weight"
+                                               class="form-control"
+                                               value="{% if line %}{{ line.weight }}{% endif %}">
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="button" class="btn btn-outline-primary fw-bold mb-4" id="addBolLine">
+                        <i class="bi bi-plus-circle me-1"></i>Add Line
+                    </button>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success btn-lg fw-bold flex-grow-1">
+                            {% if bill %}Save Changes{% else %}Save Bill of Lading{% endif %}
+                        </button>
+
+                        {% if bill %}
+                            <button type="button" onclick="window.print()" class="btn btn-dark btn-lg fw-bold">
+                                Print
+                            </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-5 bol-saved-area">
+        <div class="card bol-app-card">
+            <div class="card-header bg-white fw-bold">
+                Saved Bills of Lading
+            </div>
+
+            <div class="card-body">
+                {% for saved in saved_bills %}
+                    <div class="saved-bol-row">
+                        <div class="fw-bold text-primary">
+                            <a href="{% url 'bol_edit' saved.pk %}" class="text-decoration-none">
+                                {% if saved.bol_number %}{{ saved.bol_number }}{% else %}BOL #{{ saved.id }}{% endif %}
+                            </a>
+                        </div>
+
+                        <div class="small text-muted">
+                            {{ saved.bol_date|date:"F j, Y" }}
+                        </div>
+
+                        <div class="fw-bold">
+                            {{ saved.consignee_name|default:"No customer entered" }}
+                        </div>
+
+                        <div class="small text-muted">
+                            {{ saved.consignee_address|truncatechars:80 }}
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-muted mb-0">
+                        No Bills of Lading saved yet.
+                    </p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if bill %}
+<div class="bol-print-wrapper mt-4">
+    <div class="bol-page">
+        <h1>CONNAISSEMENT NON NÉGOCIABLE / BILL OF LADING - NOT NEGOTIABLE</h1>
+        <div class="bol-subtitle">
+            Québec road transport blank form / Formulaire vierge pour transport routier au Québec
+        </div>
+
+        <div class="bol-top-row">
+            <div class="bol-box">
+                <div class="bol-box-label">B/L No. / No de connaissement</div>
+                <div class="bol-box-value">&nbsp;</div>
+            </div>
+
+            <div class="bol-box">
+                <div class="bol-box-label">Date</div>
+                <div class="bol-box-value">{{ bill.bol_date|date:"m / d / Y" }}</div>
+            </div>
+
+            <div class="bol-box">
+                <div class="bol-box-label">Account number / No de compte</div>
+                <div class="bol-box-value">{{ bill.consignor_account_number|default:"" }}</div>
+            </div>
+        </div>
+
+        <div class="bol-party-grid">
+            <div class="bol-party-row-box">
+                <div class="bol-party-label">
+                    Consignor name<br>Nom de l'expéditeur
+                </div>
+                <div class="bol-party-value">
+                    {{ bill.consignor_name|default:"" }}
+                </div>
+            </div>
+
+            <div class="bol-party-row-box">
+                <div class="bol-party-label">
+                    Address<br>Adresse
+                </div>
+                <div class="bol-party-value">
+                    {{ bill.consignor_address|default:"" }}
+                </div>
+            </div>
+
+            <div class="bol-party-row-box">
+                <div class="bol-party-label">
+                    Date
+                </div>
+                <div class="bol-party-value">
+                    {{ bill.bol_date|date:"m / d / Y" }}
+                </div>
+            </div>
+
+            <div class="bol-party-row-box">
+                <div class="bol-party-label">
+                    Account number<br>No de compte
+                </div>
+                <div class="bol-party-value">
+                    {{ bill.consignor_account_number|default:"" }}
+                </div>
+            </div>
+
+            <div class="bol-party-row-box bol-consignee-start">
+                <div class="bol-party-label">
+                    Consignee name<br>Nom du consignataire
+                </div>
+                <div class="bol-party-value">
+                    {{ bill.consignee_name }}
+                </div>
+            </div>
+
+            <div class="bol-party-row-box bol-consignee-start">
+                <div class="bol-party-label">
+                    Address<br>Adresse
+                </div>
+                <div class="bol-party-value">
+                    {{ bill.consignee_address }}
+                </div>
+            </div>
+
+            <div class="bol-party-row-box bol-consignee-start">
+                <div class="bol-party-label">
+                    Date
+                </div>
+                <div class="bol-party-value">
+                    {{ bill.bol_date|date:"m / d / Y" }}
+                </div>
+            </div>
+
+            <div class="bol-party-row-box bol-consignee-start">
+                <div class="bol-party-label">&nbsp;</div>
+                <div class="bol-party-value">&nbsp;</div>
+            </div>
+        </div>
+
+        <div class="bol-statement">
+            Reçu au point d’origine, à la date et de l’expéditeur mentionné aux présentes, les marchandises ci-après décrites en bon état apparent, sauf indication contraire
+            (contenu et condition inconnus), marquées, consignées et destinées tel qu’indiqué. / Received at the point of origin on the date specified, from the consignor mentioned herein,
+            the property described below in apparent good order, except as noted (contents and condition unknown), marked, consigned and destined as indicated.
+            Conditions of carriage appear on the following pages and are accepted by the consignor.
+        </div>
+
+        <table class="bol-lines-table">
+            <thead>
+                <tr>
+                    <th style="width: 22%;">Order / PO number<br>No commande / bon d’achat</th>
+                    <th style="width: 48%;">Description<br>Description</th>
+                    <th style="width: 15%;">Total packages<br>Total colis</th>
+                    <th style="width: 15%;">Weight<br>Poids</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in print_lines %}
+                    <tr>
+                        <td>{% if line %}{{ line.order_po_number }}{% endif %}</td>
+                        <td>{% if line %}{{ line.description }}{% endif %}</td>
+                        <td class="text-center">{% if line %}{{ line.total_packages }}{% endif %}</td>
+                        <td class="text-center">{% if line %}{{ line.weight }}{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                <tr class="bol-total-row">
+                    <td colspan="2" class="text-end">TOTAL</td>
+                    <td class="text-center">{{ total_packages_sum }}</td>
+                    <td class="text-center">{{ total_weight_sum }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="bol-danger">
+            <div class="bol-danger-title">
+                MARCHANDISES DANGEREUSES / DANGEROUS GOODS
+            </div>
+            If applicable, complete TDG information or attach compliant shipping document. / S’il y a lieu, remplir les renseignements TMD ou joindre le document d’expédition conforme.
+            <br>
+            UN No / No UN: __________ Shipping name / Appellation réglementaire: ______________________________ Class / Classe: ____ PG/GE: ____ Quantity / Quantité: __________
+            24-hour number / No 24 h: __________________
+            <br>
+            Consignor certification / Attestation de l’expéditeur:
+            I hereby declare that the contents are fully and accurately described, properly classified and packaged, marked and in proper condition for transport according to the Transportation of Dangerous Goods Regulations.
+            / Je déclare que le contenu est décrit, classifié, emballé, marqué et en bon état pour le transport conformément au Règlement sur le transport des marchandises dangereuses.
+            Name/Nom: __________________ Signature: __________________
+        </div>
+
+        <div class="bol-bottom-grid">
+            <div class="bol-bottom-box">
+                <strong>VALEUR DÉCLARÉE / DECLARED VALUATION</strong>
+                <br>
+                Responsabilité maximum de 4,41 $/kg selon le poids total de l’expédition, sauf valeur supérieure déclarée ici /
+                Maximum liability of $4.41/kg unless higher value declared here:
+                <br><br>
+                $ __________________________
+            </div>
+
+            <div class="bol-bottom-box">
+                <strong>FRAIS DE TRANSPORT / FREIGHT CHARGES</strong>
+                <br>
+                ☐ À percevoir / Collect &nbsp;&nbsp; ☐ Payés d’avance / Prepaid &nbsp;&nbsp; ☐ C.O.D. / C.R.
+                <br>
+                Montant C.O.D. / C.R. amount: $ __________________
+                <br>
+                Autres frais / Other charges: $ __________ Total / Total: $ __________
+            </div>
+        </div>
+
+        <div class="bol-sign-grid">
+            <div class="bol-sign-box">
+                <strong>Expéditeur / Consignor</strong>
+                <br><br>
+                Sign / Signature: ________________________________
+                <br><br>
+                Name / Nom: _____________________________________
+                <br><br>
+                Date: ___________________________________________
+            </div>
+
+            <div class="bol-sign-box">
+                <strong>Transporteur / Carrier</strong>
+                <br><br>
+                Sign / Signature: ________________________________
+                <br><br>
+                Name / Nom: _____________________________________
+                <br><br>
+                Date: ___________________________________________
+            </div>
+
+            <div class="bol-sign-box">
+                <strong>Consignataire / Consignee</strong>
+                <br><br>
+                Sign / Signature: ________________________________
+                <br><br>
+                Name / Nom: _____________________________________
+                <br><br>
+                Date: ___________________________________________
+            </div>
+        </div>
+    </div>
+
+    <div class="bol-page bol-conditions-page">
+        <h2>STIPULATIONS MINIMALES / MINIMUM SPECIFICATIONS</h2>
+
+        <div class="bol-condition-item"><strong>1. Responsabilité du transporteur / Liability of carrier</strong><br>Le transporteur des marchandises décrites au connaissement est responsable de la perte ou du dommage des marchandises acceptées par lui ou son représentant, sous réserve des stipulations ci-après. / The carrier of the goods described in this bill of lading is liable for loss of or damage to goods accepted by the carrier or its agent, except as provided in these conditions.</div>
+        <div class="bol-condition-item"><strong>2. Responsabilité du transporteur initial et du transporteur de destination / Liability of originating and delivering carriers</strong><br>Lorsque des transporteurs successifs transportent un même chargement, le transporteur qui émet le connaissement et celui qui assume la responsabilité de livrer les marchandises au consignataire sont responsables de la perte ou du dommage des marchandises en possession d’un autre transporteur. / Where a shipment is accepted for carriage by connecting carriers, the carrier issuing the bill of lading and the carrier responsible for delivery are liable for loss of or damage while in another carrier’s custody.</div>
+        <div class="bol-condition-item"><strong>3. Réclamation auprès des transporteurs successifs / Recovery from connecting carrier</strong><br>Le transporteur initial ou de destination peut se faire rembourser par tout autre transporteur la valeur de la perte ou du dommage qu’il peut être appelé à payer. / The originating or delivering carrier may recover from any other carrier the amount of loss or damage it is required to pay.</div>
+        <div class="bol-condition-item"><strong>4. Recours de l’expéditeur et du consignataire / Remedy by shipper or consignee</strong><br>Les articles 2 ou 3 n’empêchent pas un expéditeur ou un consignataire d’obtenir des dommages-intérêts de quelque transporteur. / Nothing in sections 2 or 3 deprives a shipper or consignee of any rights against any carrier.</div>
+        <div class="bol-condition-item"><strong>5. Exceptions / Exemptions from liability</strong><br>Le transporteur n’est pas responsable de la perte, du dommage ou du retard résultant d’une force majeure, d’émeutes, de grèves, d’un défaut inhérent aux marchandises, ou d’un acte ou manquement de l’expéditeur. / The carrier is not liable for loss, damage or delay caused by superior force, riots, strikes, inherent defect, or act/default of the shipper.</div>
+        <div class="bol-condition-item"><strong>6. Retard / Time</strong><br>Aucun transporteur n’est tenu de transporter au moyen d’un véhicule particulier ou de livrer à temps pour un marché particulier, sauf accord indiqué au connaissement. / No carrier is bound to transport by a particular vehicle or in time for a particular market except by agreement on the bill of lading.</div>
+        <div class="bol-condition-item"><strong>7. Acheminement par le transporteur / Routing by carrier</strong><br>Lorsque par nécessité physique le transporteur achemine les marchandises par un moyen autre qu’un véhicule immatriculé, sa responsabilité demeure la même. / If physical necessity requires forwarding by another conveyance, liability remains the same.</div>
+        <div class="bol-condition-item"><strong>8. Arrêt en cours de route / Stoppage in transit</strong><br>Les marchandises arrêtées et retenues en transit à la demande de la personne habilitée le sont aux risques de cette personne. / Goods stopped and held in transit at request of the entitled party are held at that party’s risk.</div>
+        <div class="bol-condition-item"><strong>9. Détermination de la valeur / Valuation</strong><br>Toute perte ou dommage est calculé selon la valeur des marchandises à l’endroit et au moment de l’expédition, incluant les frais payés. / Loss or damage is computed on the value of goods at time and place of shipment, including paid costs.</div>
+        <div class="bol-condition-item"><strong>10. Responsabilité maximale / Maximum liability</strong><br>Le montant de toute perte ou dommage ne doit pas excéder 4,41 $/kg selon le poids total de l’expédition, à moins qu’une valeur supérieure n’ait été déclarée. / Loss or damage must not exceed $4.41/kg unless a higher value has been declared.</div>
+        <div class="bol-condition-item"><strong>11. Risques supportés par l’expéditeur / Shipper’s risk</strong><br>Une entente de transport aux risques de l’expéditeur ne couvre que les risques liés directement au transport. / A shipper’s risk agreement covers only risks necessarily incidental to transport.</div>
+        <div class="bol-condition-item"><strong>12. Avis de réclamation / Notice of Claim</strong><br>Avis écrit au transporteur dans les délais prévus, indiquant l’origine, la destination, la date d’expédition et le montant approximatif réclamé. / Written notice must be given within required delays, stating origin, destination, shipment date and estimated amount claimed.</div>
+        <div class="bol-condition-item"><strong>13. Articles de très grande valeur / Articles of extraordinary value</strong><br>Nul transporteur n’est tenu de transporter des articles de très grande valeur sans entente spéciale. / No carrier is bound to carry articles of extraordinary value unless by special agreement.</div>
+        <div class="bol-condition-item"><strong>14. Frais de transport / Freight charges</strong><br>Les frais de transport et autres frais légitimes doivent être versés selon les modalités applicables. / Freight and lawful charges must be paid according to applicable terms.</div>
+        <div class="bol-condition-item"><strong>15. Marchandises dangereuses / Dangerous goods</strong><br>Quiconque expédie des produits dangereux sans divulgation complète doit indemniser le transporteur. / A person shipping dangerous goods without full disclosure must indemnify the carrier.</div>
+        <div class="bol-condition-item"><strong>16. Biens non livrés / Undelivered goods</strong><br>Si les biens ne peuvent être livrés, le transporteur doit aviser l’expéditeur et le consignataire et demander des instructions. / If goods cannot be delivered, the carrier must notify shipper and consignee and request instructions.</div>
+        <div class="bol-condition-item"><strong>17. Renvoi des biens / Return of goods</strong><br>Si aucun ordre de disposition n’est reçu, le transporteur peut retourner les biens non livrés aux frais de l’expéditeur. / If no instructions are received, the carrier may return undelivered goods at shipper’s expense.</div>
+        <div class="bol-condition-item"><strong>18. Modifications / Alterations</strong><br>Toute modification au connaissement doit être signée ou initialée par les parties requises. / Any alteration to the bill of lading must be signed or initialled by the required parties.</div>
+        <div class="bol-condition-item"><strong>19. Poids de l’expédition / Weights</strong><br>L’expéditeur est responsable de l’exactitude des poids déclarés. / The shipper is responsible for showing correct shipping weights.</div>
+        <div class="bol-condition-item"><strong>20. Biens payables à la livraison / C.O.D. shipments</strong><br>Le transporteur ne doit livrer un chargement payable à la livraison qu’après paiement intégral. / A carrier must not deliver a C.O.D. shipment unless payment is received in full.</div>
+        <div class="bol-condition-item"><strong>21. Autres stipulations / Other specifications</strong><br>Toutes les autres stipulations convenues entre les parties doivent être indiquées au connaissement. / All other specifications agreed to by the parties must be indicated on the bill of lading.</div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    const customerSelect = document.getElementById("savedCustomerSelect");
+
+    if (customerSelect) {
+        customerSelect.addEventListener("change", function () {
+            const selected = this.options[this.selectedIndex];
+
+            if (!selected || !selected.value) {
+                return;
+            }
+
+            document.getElementById("consigneeName").value = selected.dataset.name || "";
+            document.getElementById("consigneeStreet").value = selected.dataset.street || "";
+            document.getElementById("consigneeCity").value = selected.dataset.city || "";
+            document.getElementById("consigneeProvince").value = selected.dataset.province || "";
+            document.getElementById("consigneePostalCode").value = selected.dataset.postalCode || "";
+        });
+    }
+
+    const addBolLineButton = document.getElementById("addBolLine");
+
+    if (addBolLineButton) {
+        addBolLineButton.addEventListener("click", function () {
+            const wrapper = document.getElementById("bolLines");
+
+            const row = document.createElement("div");
+            row.className = "bol-line-row";
+            row.innerHTML = `
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <label class="form-label bol-label">Order / PO Number</label>
+                        <input type="text" name="order_po_number" class="form-control">
+                    </div>
+
+                    <div class="col-md-5">
+                        <label class="form-label bol-label">Description</label>
+                        <input type="text" name="description" class="form-control">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label bol-label">Packages</label>
+                        <input type="text" name="total_packages" class="form-control">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label bol-label">Weight</label>
+                        <input type="text" name="weight" class="form-control">
+                    </div>
+                </div>
+            `;
+
+            wrapper.appendChild(row);
+        });
+    }
+</script>
+{% endblock %}

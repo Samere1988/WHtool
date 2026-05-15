@@ -1,10 +1,14 @@
+import os
 from copy import copy
 from io import BytesIO
 
+from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 
 from openpyxl import load_workbook
-from openpyxl.styles import Alignment
+from openpyxl.styles import Alignment, PatternFill, Font
 from openpyxl.utils import get_column_letter
 
 from .models import RunSheet
@@ -252,25 +256,115 @@ def _write_customer_codes(workbook, shipping_date):
         _autosize_visible_transport_columns(ws)
         _apply_readable_alignment(ws)
 
-
 @login_required
 def export_run_sheet_excel(request):
     """
-    Wrapper around the original Excel export.
+    Generates the transport Excel file directly.
 
-    It preserves the existing generated workbook/layout, then adds a visible Code column
-    at the start of each transport region block. This avoids hidden-cell mismatch issues
-    when the transport sheet is copy/pasted or rearranged.
+    This does not call base_views.export_run_sheet_excel(), because that function
+    may redirect back to the run sheet. This view must return an actual .xlsx file.
     """
-    shipping_date = base_views.get_selected_shipping_date(request)
-    response = base_views.export_run_sheet_excel(request)
+    selected_shipping_date = base_views.get_selected_shipping_date(request)
 
-    workbook = load_workbook(BytesIO(response.content))
-    _write_customer_codes(workbook, shipping_date)
+    template_path = os.path.join(
+        settings.BASE_DIR,
+        "core",
+        "excel_templates",
+        "transport_run_sheet_template.xlsx",
+    )
+
+    if not os.path.exists(template_path):
+        messages.error(
+            request,
+            "Excel template not found. Add transport_run_sheet_template.xlsx to core/excel_templates/",
+        )
+        return base_views.redirect_run_sheet_for_date(selected_shipping_date)
+
+    wb = load_workbook(template_path)
+    ws = wb["Run Sheet"]
+
+    yellow_fill = PatternFill(fill_type="solid", fgColor="FFFF00")
+    red_font = Font(color="FF0000", bold=True)
+
+    ws.column_dimensions["AA"].hidden = True
+    ws.column_dimensions["AB"].hidden = True
+
+    for region in base_views.TRANSPORT_REGIONS:
+        block = base_views.TRANSPORT_REGION_BLOCKS[region]
+        stops = base_views.build_transport_stops_for_region(region, selected_shipping_date)
+        max_rows = block["end_row"] - block["start_row"] + 1
+
+        if len(stops) > max_rows:
+            messages.error(
+                request,
+                f"{region} has {len(stops)} combined transport stops, "
+                f"but the Excel template only has room for {max_rows}.",
+            )
+            return base_views.redirect_run_sheet_for_date(selected_shipping_date)
+
+        base_views.clear_transport_block(ws, block)
+        base_views.write_transport_headers(ws, block)
+
+        ws[block["region_cell"]] = f"region {region}"
+
+        driver_name = ""
+        for stop in stops:
+            if stop["driver_name"]:
+                driver_name = stop["driver_name"]
+                break
+
+        ws[block["driver_cell"]] = f"Driver: {driver_name}" if driver_name else "Driver:"
+
+        row = block["start_row"]
+        start_col = block["start_col"]
+        hidden_ids_col = block["hidden_ids_col"]
+
+        for stop in stops:
+            ws.row_dimensions[row].height = 18
+
+            visible_values = [
+                stop["customer_name"],
+                stop["city"],
+                stop["weight"],
+                stop["skids"],
+                stop["bundles"],
+                stop["coils"],
+                stop["closing_time"],
+                stop["pickup"],
+                "",
+            ]
+
+            for col_offset, value in enumerate(visible_values):
+                cell = ws.cell(row=row, column=start_col + col_offset)
+                cell.value = value
+                cell.alignment = Alignment(
+                    horizontal="center",
+                    vertical="center",
+                    wrap_text=False,
+                    shrink_to_fit=False,
+                )
+
+                if stop["is_pickup"] or stop["is_return"]:
+                    cell.fill = yellow_fill
+                    cell.font = red_font
+
+            ws.cell(row=row, column=hidden_ids_col).value = ",".join(stop["ids"])
+            row += 1
+
+        base_views.write_transport_totals(ws, block)
+
+    # Add visible customer code columns and remove old hidden metadata.
+    _write_customer_codes(wb, selected_shipping_date)
+
+    filename = f"{selected_shipping_date.strftime('%A %B')} {selected_shipping_date.day} runsheet.xlsx"
 
     output = BytesIO()
-    workbook.save(output)
+    wb.save(output)
     output.seek(0)
 
-    response.content = output.getvalue()
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
