@@ -95,7 +95,6 @@ def edit_pickup_photo_log(request, pk):
         return redirect("pickup_photo_detail", pk=log.pk)
 
     customer_name = request.POST.get("customer_name", "").strip()
-    customer_id = request.POST.get("customer_id", "").strip()
     order_number = request.POST.get("order_number", "").strip()
     date_picked_up = request.POST.get("date_picked_up", "").strip()
 
@@ -104,12 +103,15 @@ def edit_pickup_photo_log(request, pk):
         return redirect("pickup_photo_detail", pk=log.pk)
 
     log.customer_name = customer_name
-    log.customer_id = customer_id
     log.order_number = order_number
+
+    update_fields = ["customer_name", "order_number"]
 
     if date_picked_up:
         log.date_picked_up = date_picked_up
+        update_fields.append("date_picked_up")
 
-    log.save(update_fields=["customer_name", "customer_id", "order_number", "date_picked_up"])
+    log.save(update_fields=update_fields)
+
     messages.success(request, "Pickup photo folder info updated.")
     return redirect("pickup_photo_detail", pk=log.pk)
