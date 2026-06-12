@@ -2775,11 +2775,11 @@ def bol(request, pk=None):
 
     line_form_rows = existing_lines[:]
 
-    while len(line_form_rows) < 8:
+    while len(line_form_rows) < 6:
         line_form_rows.append(None)
 
     print_lines = existing_lines[:]
-    while len(print_lines) < 8:
+    while len(print_lines) < 6:
         print_lines.append(None)
 
     total_packages_sum = sum(number_value(line.total_packages) for line in existing_lines)

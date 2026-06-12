@@ -76,13 +76,14 @@
     <div class="card-body p-0">
         <div class="tab-content" id="statsTabContent">
             <div class="tab-pane fade {% if active_tab == 'day' %}show active{% endif %}" id="day" role="tabpanel">
-                {% include 'core/stats_table.html' with dataset=daily %}
+                {% include 'core/stats/stats_table.html' with dataset=daily %}
             </div>
             <div class="tab-pane fade {% if active_tab == 'week' %}show active{% endif %}" id="week" role="tabpanel">
-                {% include 'core/stats_table.html' with dataset=weekly %}
+                {% include 'core/stats/stats_table.html' with dataset=weekly %}
+
             </div>
             <div class="tab-pane fade {% if active_tab == 'month' %}show active{% endif %}" id="month" role="tabpanel">
-                {% include 'core/stats_table.html' with dataset=monthly %}
+                {% include 'core/stats/stats_table.html' with dataset=monthly %}
             </div>
         </div>
     </div>

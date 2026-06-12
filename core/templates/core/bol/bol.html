@@ -265,7 +265,7 @@
         }
 
         @page {
-            size: letter landscape;
+            size: letter portrait;
             margin: 6mm;
         }
 
@@ -291,16 +291,38 @@
             max-width: none;
             width: 100%;
             min-height: auto;
-            height: 190mm;
+            height: auto;
             margin: 0;
-            padding: 8px;
+            padding: 6px;
             border: none;
             page-break-after: always;
-            overflow: hidden;
+            overflow: visible;
+            font-size: 9.5px;
         }
 
         .bol-page:last-child {
             page-break-after: auto;
+        }
+
+        .bol-lines-table td {
+            height: 26px;
+            padding: 3px;
+        }
+
+        .bol-danger {
+            padding: 4px;
+            font-size: 8.5px;
+        }
+
+        .bol-bottom-box {
+            min-height: 62px;
+            padding: 4px;
+        }
+
+        .bol-sign-box {
+            min-height: 78px;
+            padding: 4px;
+            font-size: 9px;
         }
     }
 </style>
