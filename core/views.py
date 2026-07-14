@@ -2,8 +2,9 @@ import pandas as pd
 import json
 import datetime
 from datetime import date, timedelta
-from collections import Counter
+from collections import Counter, defaultdict
 from io import BytesIO
+from urllib.parse import urlencode
 from copy import copy
 import os
 from types import SimpleNamespace
@@ -509,11 +510,15 @@ def run_sheet(request):
     """
     selected_shipping_date = get_selected_shipping_date(request)
 
-    all_day_orders = RunSheet.objects.filter(
+    # Daily totals should count delivery orders only.
+    # Pickups and returns stay visible on the board, but they do not add to run totals.
+    delivery_day_orders = RunSheet.objects.filter(
         shipping_date=selected_shipping_date,
+        is_pickup=False,
+        is_return=False,
     )
 
-    daily_totals_data = all_day_orders.aggregate(
+    daily_totals_data = delivery_day_orders.aggregate(
         weight=Sum("weight"),
         skids=Sum("skids"),
         bundles=Sum("bundles"),
@@ -530,6 +535,7 @@ def run_sheet(request):
     grouped_orders = {}
 
     for region in TRANSPORT_REGIONS:
+        # Keep ALL orders here so pickups and returns still appear on the board.
         orders = RunSheet.objects.filter(
             region=region,
             shipping_date=selected_shipping_date,
@@ -541,6 +547,12 @@ def run_sheet(request):
         )
 
         grouped_stops = build_grouped_run_sheet_orders(orders)
+
+        # Use delivery-only rows for the truck/region totals.
+        delivery_orders = orders.filter(
+            is_pickup=False,
+            is_return=False,
+        )
 
         region_info = RegionRunInfo.objects.filter(
             shipping_date=selected_shipping_date,
@@ -591,10 +603,10 @@ def run_sheet(request):
             "driver_name": region_driver_name,
             "start_time": region_start_time,
             "totals": {
-                "weight": sum(order.weight or 0 for order in orders),
-                "skids": sum(order.skids or 0 for order in orders),
-                "bundles": sum(order.bundles or 0 for order in orders),
-                "coils": sum(order.coils or 0 for order in orders),
+                "weight": sum(order.weight or 0 for order in delivery_orders),
+                "skids": sum(order.skids or 0 for order in delivery_orders),
+                "bundles": sum(order.bundles or 0 for order in delivery_orders),
+                "coils": sum(order.coils or 0 for order in delivery_orders),
             },
         }
 
@@ -706,6 +718,42 @@ def daily_run_stats(request):
 
     pickup_entries = entries.filter(is_pickup=True)
     return_entries = entries.filter(is_return=True)
+    customer_pickup_entries = PickupLog.objects.filter(
+        date_completed__gte=start_date,
+        date_completed__lte=end_date,
+    )
+    customer_pickup_summary_data = customer_pickup_entries.aggregate(
+        total_weight=Sum("weight"),
+        total_skids=Sum("skids"),
+        total_bundles=Sum("bundles"),
+        total_coils=Sum("coils"),
+    )
+
+    customer_pickup_summary = {
+        "weight": customer_pickup_summary_data["total_weight"] or 0,
+        "skids": customer_pickup_summary_data["total_skids"] or 0,
+        "bundles": customer_pickup_summary_data["total_bundles"] or 0,
+        "coils": customer_pickup_summary_data["total_coils"] or 0,
+        "count": customer_pickup_entries.count(),
+    }
+    customer_pickup_rows = customer_pickup_entries.order_by(
+        "date_completed",
+        "customer_name",
+        "order_number",
+        "id",
+    )
+    customer_rows = (
+        shipped_entries
+        .values("customer_name")
+        .annotate(
+            weight=Sum("weight"),
+            skids=Sum("skids"),
+            bundles=Sum("bundles"),
+            coils=Sum("coils"),
+            orders=Count("id"),
+        )
+        .order_by("-weight", "customer_name")
+    )
 
     def get_top_region(queryset):
         top = (
@@ -933,10 +981,12 @@ def daily_run_stats(request):
 
         "pickup_rows": pickup_rows,
         "return_rows": return_rows,
-
+        "customer_rows": customer_rows,
         "top_month_region": top_month_region,
         "top_pickup_region": top_pickup_region,
         "top_return_region": top_return_region,
+        "customer_pickup_summary": customer_pickup_summary,
+        "customer_pickup_rows": customer_pickup_rows,
     }
 
     return render(request, "core/stats/daily_run_stats.html", context)
@@ -945,40 +995,101 @@ def daily_run_stats(request):
 def employee_stats(request):
     """KPIs and Staff Performance Tracking."""
     now = timezone.localtime(timezone.now())
-    active_tab = request.GET.get('tab', 'day')
 
-    day_str = request.GET.get('day')
-    week_str = request.GET.get('week')
-    month_str = request.GET.get('month')
+    # Month is now first/default, then week, then day.
+    active_tab = request.GET.get("tab", "month")
+    if active_tab not in {"month", "week", "day"}:
+        active_tab = "month"
 
-    target_day = parse_date(day_str) if day_str else now.date()
-    day_start = timezone.make_aware(datetime.datetime.combine(target_day, datetime.time.min))
-    day_end = timezone.make_aware(datetime.datetime.combine(target_day, datetime.time.max))
+    day_str = request.GET.get("day")
+    week_str = request.GET.get("week")
+    month_str = request.GET.get("month")
 
-    if week_str and '-W' in week_str:
-        year, week = int(week_str.split('-W')[0]), int(week_str.split('-W')[1])
-        week_start_date = datetime.date.fromisocalendar(year, week, 1)
-    else:
-        week_start_date = now.date() - timedelta(days=now.weekday())
-        year, week, _ = week_start_date.isocalendar()
-        week_str = f"{year}-W{week:02d}"
+    # Build month dropdown options from employee-stat source data.
+    archive_months = list(
+        OrderArchive.objects
+        .dates("created_at", "month", order="DESC")
+    )
 
-    week_start = timezone.make_aware(datetime.datetime.combine(week_start_date, datetime.time.min))
-    week_end = timezone.make_aware(datetime.datetime.combine(week_start_date + timedelta(days=6), datetime.time.max))
+    pickup_months = [
+        datetime.date(month.year, month.month, 1)
+        for month in PickupLog.objects.dates("date_completed", "month", order="DESC")
+    ]
 
-    if month_str and '-' in month_str:
-        year, month = int(month_str.split('-')[0]), int(month_str.split('-')[1])
-        month_start_date = datetime.date(year, month, 1)
+    month_options = sorted(
+        set(list(archive_months) + pickup_months + [now.date().replace(day=1)]),
+        reverse=True,
+    )
+
+    if month_str and "-" in month_str:
+        try:
+            year, month = month_str.split("-")
+            month_start_date = datetime.date(int(year), int(month), 1)
+        except ValueError:
+            month_start_date = now.date().replace(day=1)
     else:
         month_start_date = now.date().replace(day=1)
-        month_str = month_start_date.strftime('%Y-%m')
 
-    month_start = timezone.make_aware(datetime.datetime.combine(month_start_date, datetime.time.min))
-    if month_start.month == 12:
-        next_month = month_start.replace(year=month_start.year + 1, month=1)
+    month_val = month_start_date.strftime("%Y-%m")
+
+    if month_start_date.month == 12:
+        next_month_date = datetime.date(month_start_date.year + 1, 1, 1)
     else:
-        next_month = month_start.replace(month=month_start.month + 1)
-    month_end = next_month - timedelta(seconds=1)
+        next_month_date = datetime.date(month_start_date.year, month_start_date.month + 1, 1)
+
+    month_end_date = next_month_date - timedelta(days=1)
+
+    month_start = timezone.make_aware(
+        datetime.datetime.combine(month_start_date, datetime.time.min)
+    )
+    month_end = timezone.make_aware(
+        datetime.datetime.combine(month_end_date, datetime.time.max)
+    )
+
+    # Build week dropdown options for the selected month.
+    week_options = []
+    week_start_date = month_start_date - timedelta(days=month_start_date.weekday())
+
+    while week_start_date <= month_end_date:
+        week_end_date = week_start_date + timedelta(days=6)
+
+        week_options.append({
+            "value": f"{week_start_date.isocalendar().year}-W{week_start_date.isocalendar().week:02d}",
+            "label": f"{week_start_date.strftime('%b %d')} - {week_end_date.strftime('%b %d, %Y')}",
+            "start_date": week_start_date,
+            "end_date": week_end_date,
+        })
+
+        week_start_date += timedelta(days=7)
+
+    if week_str and "-W" in week_str:
+        try:
+            year, week = int(week_str.split("-W")[0]), int(week_str.split("-W")[1])
+            selected_week_start = datetime.date.fromisocalendar(year, week, 1)
+        except ValueError:
+            selected_week_start = now.date() - timedelta(days=now.weekday())
+    else:
+        selected_week_start = now.date() - timedelta(days=now.weekday())
+
+    week_val = f"{selected_week_start.isocalendar().year}-W{selected_week_start.isocalendar().week:02d}"
+
+    week_start = timezone.make_aware(
+        datetime.datetime.combine(selected_week_start, datetime.time.min)
+    )
+    week_end = timezone.make_aware(
+        datetime.datetime.combine(selected_week_start + timedelta(days=6), datetime.time.max)
+    )
+
+    target_day = parse_date(day_str) if day_str else now.date()
+    if not target_day:
+        target_day = now.date()
+
+    day_start = timezone.make_aware(
+        datetime.datetime.combine(target_day, datetime.time.min)
+    )
+    day_end = timezone.make_aware(
+        datetime.datetime.combine(target_day, datetime.time.max)
+    )
 
     orders_day = list(OrderArchive.objects.filter(created_at__range=(day_start, day_end)))
     pickups_day = list(PickupLog.objects.filter(date_completed__range=(day_start.date(), day_end.date())))
@@ -990,18 +1101,24 @@ def employee_stats(request):
     pickups_month = list(PickupLog.objects.filter(date_completed__range=(month_start.date(), month_end.date())))
 
     context = {
-        'active_tab': active_tab,
-        'day_val': target_day.strftime('%Y-%m-%d'),
-        'week_val': week_str,
-        'month_val': month_str,
-        'title_day': target_day.strftime('%B %d, %Y'),
-        'title_week': f"Week of {week_start_date.strftime('%B %d, %Y')}",
-        'title_month': month_start_date.strftime('%B %Y'),
-        'daily': calculate_performance(orders_day + pickups_day),
-        'weekly': calculate_performance(orders_week + pickups_week),
-        'monthly': calculate_performance(orders_month + pickups_month),
+        "active_tab": active_tab,
+
+        "day_val": target_day.strftime("%Y-%m-%d"),
+        "week_val": week_val,
+        "month_val": month_val,
+
+        "month_options": month_options,
+        "week_options": week_options,
+
+        "title_day": target_day.strftime("%B %d, %Y"),
+        "title_week": f"Week of {selected_week_start.strftime('%B %d, %Y')}",
+        "title_month": month_start_date.strftime("%B %Y"),
+        "daily": calculate_performance(orders_day + pickups_day),
+        "weekly": calculate_performance(orders_week + pickups_week),
+        "monthly": calculate_performance(orders_month + pickups_month),
     }
-    return render(request, 'core/stats/stats.html', context)
+
+    return render(request, "core/stats/stats.html", context)
 
 # ==========================================
 # --- 3. DISPATCH & ORDER ENTRY ---

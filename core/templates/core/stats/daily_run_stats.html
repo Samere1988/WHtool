@@ -9,25 +9,82 @@
         box-shadow: 0 4px 14px rgba(0,0,0,0.10);
     }
 
-    .summary-value {
-        font-size: 1.8rem;
+    .run-summary-card {
+        overflow: hidden;
+    }
+
+    .run-summary-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+
+    .run-summary-title {
+        font-size: 0.85rem;
+        font-weight: 900;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin: 0;
+    }
+
+    .run-summary-icon {
+        font-size: 1.35rem;
+    }
+
+    .run-summary-main {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .run-summary-count {
+        font-size: 2rem;
         font-weight: 900;
         color: #0d2c54;
         line-height: 1;
     }
 
-    .summary-label {
-        font-size: 0.76rem;
+    .run-summary-count-label {
+        font-size: 0.78rem;
         font-weight: 800;
         color: #6c757d;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.04em;
+        margin-top: 0.3rem;
     }
 
-    .summary-subtext {
-        font-size: 0.82rem;
+    .run-summary-weight {
+        font-size: 1.25rem;
+        font-weight: 900;
+        color: #374151;
+        white-space: nowrap;
+    }
+
+    .run-summary-pieces {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+        border-top: 1px solid #e9ecef;
+        padding-top: 0.9rem;
+    }
+
+    .run-summary-piece-label {
+        font-size: 0.72rem;
+        font-weight: 800;
         color: #6c757d;
-        margin-top: 0.35rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .run-summary-piece-value {
+        font-size: 1.05rem;
+        font-weight: 900;
+        color: #0d2c54;
+        margin-top: 0.15rem;
     }
 
     .stats-table th {
@@ -183,64 +240,148 @@
 </form>
 
 <div class="row g-3 mb-4">
-    <div class="col-12 col-md-6 col-xl-2">
-        <div class="card stats-card h-100">
+    <div class="col-12 col-xl-4">
+        <div class="card stats-card run-summary-card h-100">
             <div class="card-body p-4">
-                <div class="summary-label">Pounds Shipped</div>
-                <div class="summary-value">{{ summary.weight|floatformat:0|intcomma }}</div>
-                <div class="summary-subtext">
-                    {{ summary.orders }} order{{ summary.orders|pluralize }}
+                <div class="run-summary-header">
+                    <h3 class="run-summary-title">Shipped</h3>
+                    <div class="run-summary-icon">🚚</div>
+                </div>
+
+                <div class="run-summary-main">
+                    <div>
+                        <div class="run-summary-count">
+                            {{ summary.orders|floatformat:0|intcomma }}
+                        </div>
+                        <div class="run-summary-count-label">
+                            Order{{ summary.orders|pluralize }}
+                        </div>
+                    </div>
+
+                    <div class="run-summary-weight">
+                        {{ summary.weight|floatformat:0|intcomma }} lbs
+                    </div>
+                </div>
+
+                <div class="run-summary-pieces">
+                    <div>
+                        <div class="run-summary-piece-label">Skids</div>
+                        <div class="run-summary-piece-value">
+                            {{ summary.skids|floatformat:0|intcomma }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="run-summary-piece-label">Bundles</div>
+                        <div class="run-summary-piece-value">
+                            {{ summary.bundles|floatformat:0|intcomma }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="run-summary-piece-label">Coils</div>
+                        <div class="run-summary-piece-value">
+                            {{ summary.coils|floatformat:0|intcomma }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-12 col-md-6 col-xl-2">
-        <div class="card stats-card h-100">
+    <div class="col-12 col-xl-4">
+        <div class="card stats-card run-summary-card h-100">
             <div class="card-body p-4">
-                <div class="summary-label">Skids</div>
-                <div class="summary-value">{{ summary.skids|floatformat:0|intcomma }}</div>
-            </div>
-        </div>
-    </div>
+                <div class="run-summary-header">
+                    <h3 class="run-summary-title">Pickups</h3>
+                    <div class="run-summary-icon">📦</div>
+                </div>
 
-    <div class="col-12 col-md-6 col-xl-2">
-        <div class="card stats-card h-100">
-            <div class="card-body p-4">
-                <div class="summary-label">Bundles</div>
-                <div class="summary-value">{{ summary.bundles|floatformat:0|intcomma }}</div>
-            </div>
-        </div>
-    </div>
+                <div class="run-summary-main">
+                    <div>
+                        <div class="run-summary-count text-success">
+                            {{ pickup_summary.count|floatformat:0|intcomma }}
+                        </div>
+                        <div class="run-summary-count-label">
+                            Pickup{{ pickup_summary.count|pluralize }}
+                        </div>
+                    </div>
 
-    <div class="col-12 col-md-6 col-xl-2">
-        <div class="card stats-card h-100">
-            <div class="card-body p-4">
-                <div class="summary-label">Coils</div>
-                <div class="summary-value">{{ summary.coils|floatformat:0|intcomma }}</div>
-            </div>
-        </div>
-    </div>
+                    <div class="run-summary-weight">
+                        {{ pickup_summary.weight|floatformat:0|intcomma }} lbs
+                    </div>
+                </div>
 
-    <div class="col-12 col-md-6 col-xl-2">
-        <div class="card stats-card h-100">
-            <div class="card-body p-4">
-                <div class="summary-label">Pickups</div>
-                <div class="summary-value text-success">{{ pickup_summary.count|floatformat:0|intcomma }}</div>
-                <div class="summary-subtext">
-                    {{ pickup_summary.weight|floatformat:0|intcomma }} lbs
+                <div class="run-summary-pieces">
+                    <div>
+                        <div class="run-summary-piece-label">Skids</div>
+                        <div class="run-summary-piece-value">
+                            {{ pickup_summary.skids|floatformat:0|intcomma }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="run-summary-piece-label">Bundles</div>
+                        <div class="run-summary-piece-value">
+                            {{ pickup_summary.bundles|floatformat:0|intcomma }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="run-summary-piece-label">Coils</div>
+                        <div class="run-summary-piece-value">
+                            {{ pickup_summary.coils|floatformat:0|intcomma }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-12 col-md-6 col-xl-2">
-        <div class="card stats-card h-100">
+    <div class="col-12 col-xl-4">
+        <div class="card stats-card run-summary-card h-100">
             <div class="card-body p-4">
-                <div class="summary-label">Returns</div>
-                <div class="summary-value text-warning">{{ return_summary.count|floatformat:0|intcomma }}</div>
-                <div class="summary-subtext">
-                    {{ return_summary.weight|floatformat:0|intcomma }} lbs
+                <div class="run-summary-header">
+                    <h3 class="run-summary-title">Returns</h3>
+                    <div class="run-summary-icon">↩️</div>
+                </div>
+
+                <div class="run-summary-main">
+                    <div>
+                        <div class="run-summary-count text-warning">
+                            {{ return_summary.count|floatformat:0|intcomma }}
+                        </div>
+                        <div class="run-summary-count-label">
+                            Return{{ return_summary.count|pluralize }}
+                        </div>
+                    </div>
+
+                    <div class="run-summary-weight">
+                        {{ return_summary.weight|floatformat:0|intcomma }} lbs
+                    </div>
+                </div>
+
+                <div class="run-summary-pieces">
+                    <div>
+                        <div class="run-summary-piece-label">Skids</div>
+                        <div class="run-summary-piece-value">
+                            {{ return_summary.skids|floatformat:0|intcomma }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="run-summary-piece-label">Bundles</div>
+                        <div class="run-summary-piece-value">
+                            {{ return_summary.bundles|floatformat:0|intcomma }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="run-summary-piece-label">Coils</div>
+                        <div class="run-summary-piece-value">
+                            {{ return_summary.coils|floatformat:0|intcomma }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -258,6 +399,11 @@
 
             <button type="button"
                     class="btn btn-outline-primary panel-tab-btn stats-panel-btn"
+                    data-target="customerPanel">
+                By Customer
+            </button>
+            <button type="button"
+                    class="btn btn-outline-primary panel-tab-btn stats-panel-btn"
                     data-target="weekPanel">
                 By Week
             </button>
@@ -271,13 +417,18 @@
             <button type="button"
                     class="btn btn-outline-success panel-tab-btn stats-panel-btn"
                     data-target="pickupPanel">
-                Pickups
+                PO Pickups
             </button>
 
             <button type="button"
                     class="btn btn-outline-warning panel-tab-btn stats-panel-btn"
                     data-target="returnPanel">
                 Returns
+            </button>
+            <button type="button"
+                    class="btn btn-outline-info panel-tab-btn stats-panel-btn"
+                    data-target="customerPickupPanel">
+                Customer Pickups
             </button>
         </div>
     </div>
@@ -326,7 +477,91 @@
                 </div>
             </div>
         </div>
+        <div id="customerPanel" class="stats-panel d-none">
+            <div class="card stats-card">
+                <div class="card-header bg-dark text-white fw-bold">
+                    Monthly Breakdown by Customer
+                </div>
 
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 stats-table">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th class="text-end">Orders</th>
+                                <th class="text-end">Weight</th>
+                                <th class="text-end">Skids</th>
+                                <th class="text-end">Bundles</th>
+                                <th class="text-end">Coils</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for row in customer_rows %}
+                            <tr>
+                                <td class="fw-bold">{{ row.customer_name|default:"No Customer" }}</td>
+                                <td class="text-end">{{ row.orders }}</td>
+                                <td class="text-end fw-bold">{{ row.weight|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.skids|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.bundles|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.coils|default:0|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    No customer shipment data found for this month.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="customerPickupPanel" class="stats-panel d-none">
+            <div class="card stats-card">
+                <div class="card-header bg-info text-dark fw-bold">
+                    Customer Pickup Details
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 stats-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Order #</th>
+                                <th class="text-end">Weight</th>
+                                <th class="text-end">Skids</th>
+                                <th class="text-end">Bundles</th>
+                                <th class="text-end">Coils</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for row in customer_pickup_rows %}
+                            <tr>
+                                <td class="fw-bold">{{ row.date_completed|date:"M d, Y" }}</td>
+                                <td class="fw-bold">{{ row.customer_name }}</td>
+                                <td>{{ row.order_number|default:"-" }}</td>
+                                <td class="text-end fw-bold">{{ row.weight|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.skids|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.bundles|default:0|floatformat:0|intcomma }}</td>
+                                <td class="text-end">{{ row.coils|default:0|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-5">
+                                    No customer pickups found for this month.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
         <div id="weekPanel" class="stats-panel d-none">
             <div class="card stats-card">
                 <div class="card-header bg-dark text-white fw-bold">
@@ -651,6 +886,12 @@
             details: "{{ top_month_region.weight|floatformat:0|intcomma|escapejs }} lbs · {{ top_month_region.skids|floatformat:0|intcomma|escapejs }} skids · {{ top_month_region.bundles|floatformat:0|intcomma|escapejs }} bundles · {{ top_month_region.coils|floatformat:0|intcomma|escapejs }} coils",
             note: "This is the highest region by shipped weight for the selected month."
         },
+        customerPanel: {
+            scope: "Top Customer for {{ period_label|escapejs }}",
+            region: "{% if customer_rows %}{{ customer_rows.0.customer_name|default:'No Customer'|escapejs }}{% else %}No Customer Data{% endif %}",
+            details: "{% if customer_rows %}{{ customer_rows.0.weight|floatformat:0|intcomma|escapejs }} lbs · {{ customer_rows.0.skids|floatformat:0|intcomma|escapejs }} skids · {{ customer_rows.0.bundles|floatformat:0|intcomma|escapejs }} bundles · {{ customer_rows.0.coils|floatformat:0|intcomma|escapejs }} coils{% else %}0 lbs · 0 skids · 0 bundles · 0 coils{% endif %}",
+            note: "This is the highest customer by shipped weight for the selected month."
+        },
         weekPanel: {
             scope: "Top Week in {{ period_label|escapejs }}",
             region: "{% if week_rows %}Week of Monday {{ week_rows.0.week_start|date:'M d, Y'|escapejs }}{% else %}No Week Data{% endif %}",
@@ -702,6 +943,7 @@
                     "btn-primary",
                     "btn-success",
                     "btn-warning",
+                    "btn-info",
                     "text-dark"
                 );
 
@@ -709,6 +951,8 @@
                     btn.classList.add("btn-outline-success");
                 } else if (btn.dataset.target === "returnPanel") {
                     btn.classList.add("btn-outline-warning");
+                } else if (btn.dataset.target === "customerPickupPanel") {
+                    btn.classList.add("btn-outline-info");
                 } else {
                     btn.classList.add("btn-outline-primary");
                 }
@@ -717,13 +961,16 @@
             this.classList.remove(
                 "btn-outline-primary",
                 "btn-outline-success",
-                "btn-outline-warning"
+                "btn-outline-warning",
+                "btn-outline-info"
             );
 
             if (targetId === "pickupPanel") {
                 this.classList.add("btn-success");
             } else if (targetId === "returnPanel") {
                 this.classList.add("btn-warning", "text-dark");
+            } else if (targetId === "customerPickupPanel") {
+                this.classList.add("btn-info", "text-dark");
             } else {
                 this.classList.add("btn-primary");
             }

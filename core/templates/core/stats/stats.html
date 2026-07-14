@@ -16,39 +16,110 @@
         /* Prevent charts from being split across pages */
         canvas { max-height: 400px; page-break-inside: avoid; }
     }
+
+    .stats-filter-card {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+        background: #ffffff;
+    }
+
+    .period-range {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #6c757d;
+    }
+
+    .filter-label {
+        font-size: 0.78rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-4 mt-2">
+<div class="d-flex justify-content-between align-items-start mb-4 mt-2 flex-wrap gap-3">
     <div>
-        <h2 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Productivity Dashboard</h2>
-        <p class="text-muted small mb-0" id="dashboardTitle">Viewing Stats For: {{ title_day }}</p>
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-graph-up-arrow me-2"></i>Productivity Dashboard
+        </h2>
+        <p class="text-muted small mb-0" id="dashboardTitle">
+            Viewing Stats For:
+            {% if active_tab == 'week' %}
+                {{ title_week }}
+            {% elif active_tab == 'day' %}
+                {{ title_day }}
+            {% else %}
+                {{ title_month }}
+            {% endif %}
+        </p>
     </div>
 
-    <div class="d-flex gap-3 align-items-center">
-        <form method="GET" class="d-flex align-items-center bg-white p-2 rounded shadow-sm border">
-            <input type="hidden" name="tab" id="activeTabInput" value="{{ active_tab }}">
-
-            <div id="picker-day" class="d-flex align-items-center" {% if active_tab != 'day' %}style="display:none;"{% endif %}>
-                <label class="fw-bold text-primary me-2 ms-2 small">Select Day:</label>
-                <input type="date" name="day" class="form-control form-control-sm border-0 bg-light fw-bold" value="{{ day_val }}" onchange="this.form.submit()">
-            </div>
-
-            <div id="picker-week" class="d-flex align-items-center" {% if active_tab != 'week' %}style="display:none;"{% endif %}>
-                <label class="fw-bold text-success me-2 ms-2 small">Select Week:</label>
-                <input type="week" name="week" class="form-control form-control-sm border-0 bg-light fw-bold" value="{{ week_val }}" onchange="this.form.submit()">
-            </div>
-
-            <div id="picker-month" class="d-flex align-items-center" {% if active_tab != 'month' %}style="display:none;"{% endif %}>
-                <label class="fw-bold text-danger me-2 ms-2 small">Select Month:</label>
-                <input type="month" name="month" class="form-control form-control-sm border-0 bg-light fw-bold" value="{{ month_val }}" onchange="this.form.submit()">
-            </div>
-        </form>
-
-        <button onclick="window.print()" class="btn btn-dark shadow-sm fw-bold px-3">
-            <i class="bi bi-printer-fill me-1"></i> Print
-        </button>
-    </div>
+    <button onclick="window.print()" class="btn btn-dark shadow-sm fw-bold px-3">
+        <i class="bi bi-printer-fill me-1"></i> Print
+    </button>
 </div>
+
+<form method="GET" class="stats-filter-card mb-4">
+    <div class="card-body p-3">
+        <input type="hidden" name="tab" id="activeTabInput" value="{{ active_tab }}">
+
+        <div class="d-flex flex-wrap align-items-end gap-3">
+            <div>
+                <label class="form-label filter-label text-primary mb-1">
+                    Select Month
+                </label>
+                <select name="month"
+                        class="form-select fw-bold"
+                        onchange="document.getElementById('activeTabInput').value='month'; this.form.submit();">
+                    {% for month_date in month_options %}
+                        <option value="{{ month_date|date:'Y-m' }}"
+                                {% if month_val == month_date|date:'Y-m' %}selected{% endif %}>
+                            {{ month_date|date:"F Y" }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="form-label filter-label text-success mb-1">
+                    Select Week
+                </label>
+                <select name="week"
+                        class="form-select fw-bold"
+                        onchange="document.getElementById('activeTabInput').value='week'; this.form.submit();">
+                    {% for week in week_options %}
+                        <option value="{{ week.value }}"
+                                {% if week_val == week.value %}selected{% endif %}>
+                            {{ week.label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="form-label filter-label text-secondary mb-1">
+                    Select Day
+                </label>
+                <input type="date"
+                       name="day"
+                       class="form-control fw-bold"
+                       value="{{ day_val }}"
+                       onchange="document.getElementById('activeTabInput').value='day'; this.form.submit();">
+            </div>
+
+            <div class="ms-auto period-range">
+                {% if active_tab == 'week' %}
+                    {{ title_week }}
+                {% elif active_tab == 'day' %}
+                    {{ title_day }}
+                {% else %}
+                    {{ title_month }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</form>
 
 <div class="row mb-4">
     <div class="col-12">
@@ -62,99 +133,168 @@
     <div class="card-header bg-dark p-0">
         <ul class="nav nav-tabs nav-fill bg-dark border-bottom-0" id="statsTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link rounded-0 fw-bold {% if active_tab == 'day' %}active bg-white text-dark{% else %}text-white{% endif %}" id="day-tab" data-bs-toggle="tab" data-bs-target="#day" type="button" role="tab" onclick="switchTab('day')">Daily</button>
+                <button class="nav-link rounded-0 fw-bold {% if active_tab == 'month' %}active bg-white text-dark{% else %}text-white{% endif %}"
+                        id="month-tab"
+                        data-bs-toggle="tab"
+                        data-bs-target="#month"
+                        type="button"
+                        role="tab"
+                        onclick="switchTab('month')">
+                    Monthly
+                </button>
             </li>
+
             <li class="nav-item" role="presentation">
-                <button class="nav-link rounded-0 fw-bold {% if active_tab == 'week' %}active bg-white text-dark{% else %}text-white{% endif %}" id="week-tab" data-bs-toggle="tab" data-bs-target="#week" type="button" role="tab" onclick="switchTab('week')">Weekly</button>
+                <button class="nav-link rounded-0 fw-bold {% if active_tab == 'week' %}active bg-white text-dark{% else %}text-white{% endif %}"
+                        id="week-tab"
+                        data-bs-toggle="tab"
+                        data-bs-target="#week"
+                        type="button"
+                        role="tab"
+                        onclick="switchTab('week')">
+                    Weekly
+                </button>
             </li>
+
             <li class="nav-item" role="presentation">
-                <button class="nav-link rounded-0 fw-bold {% if active_tab == 'month' %}active bg-white text-dark{% else %}text-white{% endif %}" id="month-tab" data-bs-toggle="tab" data-bs-target="#month" type="button" role="tab" onclick="switchTab('month')">Monthly</button>
+                <button class="nav-link rounded-0 fw-bold {% if active_tab == 'day' %}active bg-white text-dark{% else %}text-white{% endif %}"
+                        id="day-tab"
+                        data-bs-toggle="tab"
+                        data-bs-target="#day"
+                        type="button"
+                        role="tab"
+                        onclick="switchTab('day')">
+                    Daily
+                </button>
             </li>
         </ul>
     </div>
 
     <div class="card-body p-0">
         <div class="tab-content" id="statsTabContent">
-            <div class="tab-pane fade {% if active_tab == 'day' %}show active{% endif %}" id="day" role="tabpanel">
-                {% include 'core/stats/stats_table.html' with dataset=daily %}
-            </div>
-            <div class="tab-pane fade {% if active_tab == 'week' %}show active{% endif %}" id="week" role="tabpanel">
-                {% include 'core/stats/stats_table.html' with dataset=weekly %}
-
-            </div>
-            <div class="tab-pane fade {% if active_tab == 'month' %}show active{% endif %}" id="month" role="tabpanel">
+            <div class="tab-pane fade {% if active_tab == 'month' %}show active{% endif %}"
+                 id="month"
+                 role="tabpanel">
                 {% include 'core/stats/stats_table.html' with dataset=monthly %}
+            </div>
+
+            <div class="tab-pane fade {% if active_tab == 'week' %}show active{% endif %}"
+                 id="week"
+                 role="tabpanel">
+                {% include 'core/stats/stats_table.html' with dataset=weekly %}
+            </div>
+
+            <div class="tab-pane fade {% if active_tab == 'day' %}show active{% endif %}"
+                 id="day"
+                 role="tabpanel">
+                {% include 'core/stats/stats_table.html' with dataset=daily %}
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // 1. Load the raw JSON data
     const chartData = {
-        day: { labels: {{ daily.labels|safe }}, orders: {{ daily.orders|safe }}, lines: {{ daily.lines|safe }}, title: "Viewing Stats For: {{ title_day }}" },
-        week: { labels: {{ weekly.labels|safe }}, orders: {{ weekly.orders|safe }}, lines: {{ weekly.lines|safe }}, title: "Viewing Stats For: {{ title_week }}" },
-        month: { labels: {{ monthly.labels|safe }}, orders: {{ monthly.orders|safe }}, lines: {{ monthly.lines|safe }}, title: "Viewing Stats For: {{ title_month }}" }
+        month: {
+            labels: {{ monthly.labels|safe }},
+            orders: {{ monthly.orders|safe }},
+            lines: {{ monthly.lines|safe }},
+            title: "Viewing Stats For: {{ title_month }}"
+        },
+        week: {
+            labels: {{ weekly.labels|safe }},
+            orders: {{ weekly.orders|safe }},
+            lines: {{ weekly.lines|safe }},
+            title: "Viewing Stats For: {{ title_week }}"
+        },
+        day: {
+            labels: {{ daily.labels|safe }},
+            orders: {{ daily.orders|safe }},
+            lines: {{ daily.lines|safe }},
+            title: "Viewing Stats For: {{ title_day }}"
+        }
     };
 
     let performanceChart;
 
-    // 2. Render Chart Function
     function renderChart(period) {
         const ctx = document.getElementById('performanceChart').getContext('2d');
         const data = chartData[period];
 
-        if (performanceChart) performanceChart.destroy();
+        if (performanceChart) {
+            performanceChart.destroy();
+        }
 
         performanceChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: data.labels,
                 datasets: [
-                    { label: 'Lines Prepared', data: data.lines, backgroundColor: 'rgba(13, 110, 253, 0.8)', borderRadius: 4, order: 1 },
-                    { label: 'Orders Picked', data: data.orders, backgroundColor: 'rgba(25, 135, 84, 0.8)', borderRadius: 4, order: 2 }
+                    {
+                        label: 'Lines Prepared',
+                        data: data.lines,
+                        backgroundColor: 'rgba(13, 110, 253, 0.8)',
+                        borderRadius: 4,
+                        order: 1
+                    },
+                    {
+                        label: 'Orders Picked',
+                        data: data.orders,
+                        backgroundColor: 'rgba(25, 135, 84, 0.8)',
+                        borderRadius: 4,
+                        order: 2
+                    }
                 ]
             },
             options: {
                 responsive: true,
-                interaction: { mode: 'index', intersect: false },
-                plugins: { legend: { position: 'top', labels: { font: { weight: 'bold' } } } },
-                scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
             }
         });
     }
 
-    // 3. Tab Switching Logic (Handles Chart, Form Inputs, and Titles)
     function switchTab(period) {
-        // Render new chart
         renderChart(period);
 
-        // Update the form's hidden input so reloads remember the tab
         document.getElementById('activeTabInput').value = period;
-
-        // Update the sub-title text
         document.getElementById('dashboardTitle').innerText = chartData[period].title;
-
-        // Hide all pickers, show only the active one
-        document.getElementById('picker-day').style.display = 'none';
-        document.getElementById('picker-week').style.display = 'none';
-        document.getElementById('picker-month').style.display = 'none';
-        document.getElementById('picker-' + period).style.display = 'flex';
     }
 
-    // 4. Initialize page based on active tab
     document.addEventListener("DOMContentLoaded", () => {
         renderChart("{{ active_tab }}");
         document.getElementById('dashboardTitle').innerText = chartData["{{ active_tab }}"].title;
     });
 
-    // 5. CSS Tab Styling Handler
     document.querySelectorAll('.nav-link').forEach(tab => {
         tab.addEventListener('show.bs.tab', function(e) {
             document.querySelectorAll('.nav-link').forEach(t => {
                 t.classList.remove('bg-white', 'text-dark');
                 t.classList.add('text-white');
             });
+
             e.target.classList.add('bg-white', 'text-dark');
             e.target.classList.remove('text-white');
         });
