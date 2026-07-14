@@ -4,6 +4,7 @@ from . import transport_import_views
 from . import transport_export_views
 from . import transport_commit_views
 from . import photo_edit_views
+from . import report_views
 
 urlpatterns = [
     # --- MAIN DASHBOARD & STATS ---
@@ -15,6 +16,7 @@ urlpatterns = [
     path('stats/daily-runs/', views.daily_run_stats, name='daily_run_stats'),
     path('stats/employees/', views.employee_stats, name='employee_stats'),
     path('history/', views.run_sheet_history, name='run_sheet_history'),
+    path("reports/", report_views.reports, name="reports"),
 
     # --- RUN SHEET ACTIONS ---
     path('add-to-run-sheet/', views.add_to_run_sheet, name='add_to_run_sheet'),
