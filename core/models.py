@@ -351,6 +351,36 @@ class RegionRunInfo(models.Model):
     def __str__(self):
         return f"{self.shipping_date} - {self.region} - {self.driver_name or 'Unassigned'}"
 
+class ExtraRun(models.Model):
+    shipping_date = models.DateField()
+    name = models.CharField(max_length=100)
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    class Meta:
+        ordering = [
+            "shipping_date",
+            "created_at",
+            "id",
+        ]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "shipping_date",
+                    "name",
+                ],
+                name="unique_extra_run_name_per_date",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.shipping_date} - "
+            f"{self.name}"
+        )
 
 class BillOfLadingCustomer(models.Model):
     name = models.CharField(max_length=255)
@@ -382,13 +412,42 @@ class BillOfLading(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-
 class BillOfLadingLine(models.Model):
-    bill = models.ForeignKey(BillOfLading, related_name="lines", on_delete=models.CASCADE)
-    order_po_number = models.CharField(max_length=100, blank=True)
-    description = models.TextField(blank=True)
-    total_packages = models.CharField(max_length=50, blank=True)
-    weight = models.CharField(max_length=50, blank=True)
+    class PackageType(models.TextChoices):
+        SKID = "skid", "Skid(s)"
+        COIL = "coil", "Coil(s)"
+        BUNDLE = "bundle", "Bundle(s)"
+
+    bill = models.ForeignKey(
+        BillOfLading,
+        related_name="lines",
+        on_delete=models.CASCADE,
+    )
+
+    order_po_number = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+
+    description = models.TextField(
+        blank=True,
+    )
+
+    total_packages = models.CharField(
+        max_length=50,
+        blank=True,
+    )
+
+    package_type = models.CharField(
+        max_length=10,
+        choices=PackageType.choices,
+        blank=True,
+    )
+
+    weight = models.CharField(
+        max_length=50,
+        blank=True,
+    )
 
 class InventoryReport(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)

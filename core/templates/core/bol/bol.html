@@ -3,44 +3,134 @@
 
 {% block content %}
 <style>
-    .bol-app-card {
-        border: none;
+    .bol-workspace {
+        max-width: 1500px;
+        margin: 0 auto;
+        padding-bottom: 3rem;
+    }
+
+    .bol-page-heading {
+        padding: 1.25rem 1.5rem;
+        border: 1px solid #e2e8f0;
         border-radius: 1rem;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+        background: linear-gradient(135deg, #ffffff 0%, #f5f8fc 100%);
+    }
+
+    .bol-heading-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 0.85rem;
+        color: #ffffff;
+        background: #0d2c54;
+        font-size: 1.25rem;
+    }
+
+    .bol-app-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        box-shadow: 0 8px 24px rgba(13, 44, 84, 0.07);
+        overflow: hidden;
+    }
+
+    .bol-card-heading {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        color: #0d2c54;
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: 800;
+    }
+
+    .bol-card-heading i {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 0.65rem;
+        color: #0d2c54;
+        background: #eaf1f9;
     }
 
     .bol-section-title {
-        font-size: 0.9rem;
-        font-weight: 900;
+        font-size: 0.78rem;
+        font-weight: 800;
         color: #0d2c54;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border-bottom: 2px solid #dee2e6;
-        padding-bottom: 0.5rem;
+        letter-spacing: 0.08em;
+        border-bottom: 1px solid #dbe4ef;
+        padding-bottom: 0.65rem;
         margin-bottom: 1rem;
     }
 
     .bol-label {
-        font-weight: 800;
-        font-size: 0.85rem;
-        color: #495057;
+        margin-bottom: 0.35rem;
+        font-weight: 700;
+        font-size: 0.8rem;
+        color: #334155;
+    }
+
+    .bol-app-card .form-control,
+    .bol-app-card .form-select {
+        border-color: #cbd5e1;
+        border-radius: 0.65rem;
+    }
+
+    .bol-app-card .form-control:focus,
+    .bol-app-card .form-select:focus {
+        border-color: #6c95c5;
+        box-shadow: 0 0 0 0.2rem rgba(13, 44, 84, 0.1);
+    }
+
+    .bol-form-panel {
+        padding: 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.85rem;
+        background: #f8fafc;
     }
 
     .bol-line-row {
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 0.75rem;
-        padding: 0.85rem;
+        position: relative;
+        background: #ffffff;
+        border: 1px solid #dbe4ef;
+        border-left: 4px solid #7897bb;
+        border-radius: 0.85rem;
+        padding: 1rem;
         margin-bottom: 0.75rem;
     }
 
+    .bol-line-row .bol-label {
+        display: flex;
+        align-items: flex-end;
+        min-height: 2.5rem;
+    }
+
     .saved-bol-row {
-        border-bottom: 1px solid #e9ecef;
-        padding: 0.75rem 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 0.85rem;
+        margin-bottom: 0.65rem;
+        background: #ffffff;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .saved-bol-row:hover {
+        border-color: #9db4ce;
+        background: #f8fafc;
     }
 
     .saved-bol-row:last-child {
-        border-bottom: none;
+        margin-bottom: 0;
+    }
+
+    .bol-saved-list {
+        max-height: 70vh;
+        overflow-y: auto;
     }
 
     .bol-print-wrapper {
@@ -177,9 +267,38 @@
     }
 
     .bol-total-row td {
-        height: 28px;
+        height: auto;
         font-weight: 900;
-        background: #f8f8f8;
+        background: #f3f6f9;
+        padding: 7px;
+    }
+
+    .bol-total-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .bol-total-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 34px;
+        padding: 6px 8px;
+        border: 1px solid #aeb9c5;
+        background: #ffffff;
+    }
+
+    .bol-total-label {
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .bol-total-value {
+        font-size: 12px;
+        white-space: nowrap;
     }
 
     .bol-danger {
@@ -309,6 +428,19 @@
             padding: 3px;
         }
 
+        .bol-total-row td {
+            padding: 4px;
+        }
+
+        .bol-total-grid {
+            gap: 3px;
+        }
+
+        .bol-total-item {
+            min-height: 27px;
+            padding: 3px 5px;
+        }
+
         .bol-danger {
             padding: 4px;
             font-size: 8.5px;
@@ -325,8 +457,23 @@
             font-size: 9px;
         }
     }
+
+    @media (max-width: 767.98px) {
+        .bol-page-heading {
+            padding: 1rem;
+        }
+
+        .bol-line-row .bol-label {
+            min-height: auto;
+        }
+
+        .bol-total-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
 </style>
 
+<div class="bol-workspace">
 {% if messages %}
     <div class="mb-3 d-print-none">
         {% for message in messages %}
@@ -338,28 +485,37 @@
     </div>
 {% endif %}
 
-<div class="d-flex justify-content-between align-items-center mb-4 mt-2 flex-wrap gap-3 d-print-none">
-    <div>
-        <h2 class="fw-bold mb-0">
-            <i class="bi bi-file-earmark-text me-2"></i>Bill of Lading
-        </h2>
-        <p class="text-muted small mb-0">
-            Create, save, edit, and print a bilingual Québec Bill of Lading.
-        </p>
+<div class="bol-page-heading d-flex justify-content-between align-items-center mb-4 mt-2 flex-wrap gap-3 d-print-none">
+    <div class="d-flex align-items-center gap-3">
+        <span class="bol-heading-icon">
+            <i class="bi bi-file-earmark-text"></i>
+        </span>
+        <div>
+            <h2 class="fw-bold mb-1">Bill of Lading</h2>
+            <p class="text-muted mb-0">
+                Create, save, edit, and print shipment documents.
+            </p>
+        </div>
     </div>
 
-    {% if bill %}
-        <button onclick="window.print()" class="btn btn-dark btn-lg fw-bold">
-            <i class="bi bi-printer me-2"></i>Print Finished BOL
-        </button>
-    {% endif %}
+    <div class="d-flex flex-wrap gap-2">
+        {% if bill %}
+            <a href="{% url 'bol' %}" class="btn btn-outline-primary">
+                <i class="bi bi-plus-lg me-1"></i>New BOL
+            </a>
+            <button onclick="window.print()" class="btn btn-dark fw-bold">
+                <i class="bi bi-printer me-2"></i>Print BOL
+            </button>
+        {% endif %}
+    </div>
 </div>
 
 <div class="row g-4">
     <div class="col-12 col-xl-7 bol-form-area">
         <div class="card bol-app-card">
-            <div class="card-header bg-dark text-white fw-bold py-3">
-                {% if bill %}Edit Bill of Lading{% else %}New Bill of Lading{% endif %}
+            <div class="bol-card-heading">
+                <i class="bi bi-pencil-square"></i>
+                <span>{% if bill %}Edit Bill of Lading{% else %}New Bill of Lading{% endif %}</span>
             </div>
 
             <div class="card-body p-4">
@@ -393,7 +549,7 @@
 
                     <div class="bol-section-title">Shipper / Consignor</div>
 
-                    <div class="border rounded p-3 mb-4 bg-light">
+                    <div class="bol-form-panel mb-4">
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label bol-label">Shipper Name</label>
@@ -452,7 +608,7 @@
 
                     <div class="bol-section-title">Receiver / Consignee</div>
 
-                    <div class="border rounded p-3 mb-4 bg-white">
+                    <div class="bol-form-panel mb-4">
                         <div class="row g-3">
                             <div class="col-12">
                                 <label class="form-label bol-label">Saved Ship-To Customer</label>
@@ -544,7 +700,7 @@
                         {% for line in line_form_rows %}
                             <div class="bol-line-row">
                                 <div class="row g-2">
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
                                         <label class="form-label bol-label">Order / PO Number</label>
                                         <input type="text"
                                                name="order_po_number"
@@ -552,7 +708,7 @@
                                                value="{% if line %}{{ line.order_po_number }}{% endif %}">
                                     </div>
 
-                                    <div class="col-md-5">
+                                    <div class="col-md-3">
                                         <label class="form-label bol-label">Description</label>
                                         <input type="text"
                                                name="description"
@@ -561,11 +717,30 @@
                                     </div>
 
                                     <div class="col-md-2">
-                                        <label class="form-label bol-label">Packages</label>
-                                        <input type="text"
+                                        <label class="form-label bol-label">Quantity</label>
+                                        <input type="number"
                                                name="total_packages"
                                                class="form-control"
+                                               min="0"
+                                               step="1"
+                                               inputmode="decimal"
                                                value="{% if line %}{{ line.total_packages }}{% endif %}">
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label bol-label">Package Type</label>
+                                        <select name="package_type" class="form-select">
+                                            <option value="">Select type...</option>
+                                            <option value="skid" {% if line and line.package_type == "skid" %}selected{% endif %}>
+                                                Skid(s)
+                                            </option>
+                                            <option value="coil" {% if line and line.package_type == "coil" %}selected{% endif %}>
+                                                Coil(s)
+                                            </option>
+                                            <option value="bundle" {% if line and line.package_type == "bundle" %}selected{% endif %}>
+                                                Bundle(s)
+                                            </option>
+                                        </select>
                                     </div>
 
                                     <div class="col-md-2">
@@ -602,11 +777,12 @@
 
     <div class="col-12 col-xl-5 bol-saved-area">
         <div class="card bol-app-card">
-            <div class="card-header bg-white fw-bold">
-                Saved Bills of Lading
+            <div class="bol-card-heading">
+                <i class="bi bi-clock-history"></i>
+                <span>Saved Bills of Lading</span>
             </div>
 
-            <div class="card-body">
+            <div class="card-body bol-saved-list">
                 {% for saved in saved_bills %}
                     <div class="saved-bol-row">
                         <div class="fw-bold text-primary">
@@ -742,9 +918,10 @@
         <table class="bol-lines-table">
             <thead>
                 <tr>
-                    <th style="width: 22%;">Order / PO number<br>No commande / bon d’achat</th>
-                    <th style="width: 48%;">Description<br>Description</th>
-                    <th style="width: 15%;">Total packages<br>Total colis</th>
+                    <th style="width: 20%;">Order / PO number<br>No commande / bon d’achat</th>
+                    <th style="width: 42%;">Description<br>Description</th>
+                    <th style="width: 10%;">Quantity<br>Quantité</th>
+                    <th style="width: 13%;">Package type<br>Type de colis</th>
                     <th style="width: 15%;">Weight<br>Poids</th>
                 </tr>
             </thead>
@@ -753,14 +930,32 @@
                     <tr>
                         <td>{% if line %}{{ line.order_po_number }}{% endif %}</td>
                         <td>{% if line %}{{ line.description }}{% endif %}</td>
-                        <td class="text-center">{% if line %}{{ line.total_packages }}{% endif %}</td>
-                        <td class="text-center">{% if line %}{{ line.weight }}{% endif %}</td>
+                        <td class="text-center">{% if line %}{{ line.total_packages|intcomma }}{% endif %}</td>
+                        <td class="text-center">{% if line %}{{ line.get_package_type_display }}{% endif %}</td>
+                        <td class="text-center">{% if line %}{{ line.weight|intcomma }}{% endif %}</td>
                     </tr>
                 {% endfor %}
                 <tr class="bol-total-row">
-                    <td colspan="2" class="text-end">TOTAL</td>
-                    <td class="text-center">{{ total_packages_sum }}</td>
-                    <td class="text-center">{{ total_weight_sum }}</td>
+                    <td colspan="5">
+                        <div class="bol-total-grid">
+                            <div class="bol-total-item">
+                                <span class="bol-total-label">Total coils</span>
+                                <span class="bol-total-value">{{ total_coils|floatformat:"-2"|intcomma }}</span>
+                            </div>
+                            <div class="bol-total-item">
+                                <span class="bol-total-label">Total skids</span>
+                                <span class="bol-total-value">{{ total_skids|floatformat:"-2"|intcomma }}</span>
+                            </div>
+                            <div class="bol-total-item">
+                                <span class="bol-total-label">Total bundles</span>
+                                <span class="bol-total-value">{{ total_bundles|floatformat:"-2"|intcomma }}</span>
+                            </div>
+                            <div class="bol-total-item">
+                                <span class="bol-total-label">Total weight</span>
+                                <span class="bol-total-value">{{ total_weight_sum|floatformat:"-2"|intcomma }}</span>
+                            </div>
+                        </div>
+                    </td>
                 </tr>
             </tbody>
         </table>
@@ -861,6 +1056,7 @@
     </div>
 </div>
 {% endif %}
+</div>
 
 <script>
     const customerSelect = document.getElementById("savedCustomerSelect");
@@ -891,19 +1087,34 @@
             row.className = "bol-line-row";
             row.innerHTML = `
                 <div class="row g-2">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label bol-label">Order / PO Number</label>
                         <input type="text" name="order_po_number" class="form-control">
                     </div>
 
-                    <div class="col-md-5">
+                    <div class="col-md-3">
                         <label class="form-label bol-label">Description</label>
                         <input type="text" name="description" class="form-control">
                     </div>
 
                     <div class="col-md-2">
-                        <label class="form-label bol-label">Packages</label>
-                        <input type="text" name="total_packages" class="form-control">
+                        <label class="form-label bol-label">Quantity</label>
+                        <input type="number"
+                               name="total_packages"
+                               class="form-control"
+                               min="0"
+                               step="1"
+                               inputmode="decimal">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label bol-label">Package Type</label>
+                        <select name="package_type" class="form-select">
+                            <option value="">Select type...</option>
+                            <option value="skid">Skid(s)</option>
+                            <option value="coil">Coil(s)</option>
+                            <option value="bundle">Bundle(s)</option>
+                        </select>
                     </div>
 
                     <div class="col-md-2">

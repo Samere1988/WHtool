@@ -30,6 +30,17 @@ urlpatterns = [
     path('commit-day/', views.commit_and_clear_day, name='commit_and_clear_day'),
     path('run-sheet/reorder/', views.reorder_run_sheet, name='reorder_run_sheet'),
     path('run-sheet/update-region-driver/', views.update_region_driver, name='update_region_driver'),
+    path(
+        "run-sheet/extra-run/create/",
+        views.create_extra_run,
+        name="create_extra_run",
+    ),
+
+    path(
+        "run-sheet/extra-run/<int:run_id>/delete/",
+        views.delete_extra_run,
+        name="delete_extra_run",
+    ),
 
     # --- SAFER TRANSPORT-COMPANY IMPORT WORKFLOW ---
     path('transport-import/upload/', transport_commit_views.upload_transport_preview, name='upload_transport_import'),

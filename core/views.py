@@ -30,7 +30,7 @@ from .models import (
     DailyRunSheetCommit, DailyRunSheetEntry, EmployeeDailyStat,
     OutboundLoad, OutboundPhoto, Vendor, PickupLog,
     PickupPhotoLog, PickupPhoto, Container, ContainerPhoto,RegionRunInfo,
-    BillOfLading, BillOfLadingCustomer, BillOfLadingLine
+    BillOfLading, BillOfLadingCustomer, BillOfLadingLine,ExtraRun
 )
 
 
@@ -193,6 +193,54 @@ def normalize_transport_region(region):
     }
 
     return aliases.get(cleaned.lower(), cleaned)
+
+def get_extra_runs_for_date(shipping_date):
+    return list(
+        ExtraRun.objects.filter(
+            shipping_date=shipping_date,
+        ).order_by(
+            "created_at",
+            "id",
+        )
+    )
+
+
+def get_run_names_for_date(shipping_date):
+    extra_runs = get_extra_runs_for_date(
+        shipping_date
+    )
+
+    run_names = list(
+        TRANSPORT_REGIONS
+    )
+
+    run_names.extend(
+        extra_run.name
+        for extra_run in extra_runs
+    )
+
+    return run_names, extra_runs
+
+
+def clear_extra_runs_for_date(shipping_date):
+    extra_runs = get_extra_runs_for_date(
+        shipping_date
+    )
+
+    extra_names = [
+        extra_run.name
+        for extra_run in extra_runs
+    ]
+
+    if extra_names:
+        RegionRunInfo.objects.filter(
+            shipping_date=shipping_date,
+            region__in=extra_names,
+        ).delete()
+
+    ExtraRun.objects.filter(
+        shipping_date=shipping_date,
+    ).delete()
 
 
 def get_transport_group_key(order):
@@ -536,7 +584,16 @@ def run_sheet(request):
 
     grouped_orders = {}
 
-    for region in TRANSPORT_REGIONS:
+    run_names, extra_runs = get_run_names_for_date(
+        selected_shipping_date
+    )
+
+    extra_runs_by_name = {
+        extra_run.name: extra_run
+        for extra_run in extra_runs
+    }
+
+    for region in run_names:
         # Keep ALL orders here so pickups and returns still appear on the board.
         orders = RunSheet.objects.filter(
             region=region,
@@ -604,14 +661,36 @@ def run_sheet(request):
             "orders": grouped_stops,
             "driver_name": region_driver_name,
             "start_time": region_start_time,
+
+            "is_extra_run": (
+                    region in extra_runs_by_name
+            ),
+
+            "extra_run_id": (
+                extra_runs_by_name[region].id
+                if region in extra_runs_by_name
+                else None
+            ),
+
             "totals": {
-                "weight": sum(order.weight or 0 for order in delivery_orders),
-                "skids": sum(order.skids or 0 for order in delivery_orders),
-                "bundles": sum(order.bundles or 0 for order in delivery_orders),
-                "coils": sum(order.coils or 0 for order in delivery_orders),
+                "weight": sum(
+                    order.weight or 0
+                    for order in delivery_orders
+                ),
+                "skids": sum(
+                    order.skids or 0
+                    for order in delivery_orders
+                ),
+                "bundles": sum(
+                    order.bundles or 0
+                    for order in delivery_orders
+                ),
+                "coils": sum(
+                    order.coils or 0
+                    for order in delivery_orders
+                ),
             },
         }
-
     return render(
         request,
         "core/run_sheet.html",
@@ -1417,11 +1496,31 @@ def delete_stop(request, pk):
 
 @login_required
 def clear_run_sheet(request):
-    selected_shipping_date = get_selected_shipping_date(request)
+    selected_shipping_date = (
+        get_selected_shipping_date(request)
+    )
+
     if request.method == "POST":
-        RunSheet.objects.filter(shipping_date=selected_shipping_date).delete()
-        messages.warning(request, f"Run sheet for {selected_shipping_date} has been cleared.")
-    return redirect_run_sheet_for_date(selected_shipping_date)
+        RunSheet.objects.filter(
+            shipping_date=selected_shipping_date,
+        ).delete()
+
+        clear_extra_runs_for_date(
+            selected_shipping_date
+        )
+
+        messages.warning(
+            request,
+            (
+                f"Run sheet for "
+                f"{selected_shipping_date} "
+                f"has been cleared."
+            ),
+        )
+
+    return redirect_run_sheet_for_date(
+        selected_shipping_date
+    )
 
 
 @login_required
@@ -2629,66 +2728,328 @@ def delete_pickup_individual_photo(request, photo_id):
 
 @login_required
 @require_POST
+def create_extra_run(request):
+    shipping_date = get_selected_shipping_date(
+        request
+    )
+
+    run_name = " ".join(
+        request.POST.get(
+            "run_name",
+            "",
+        ).split()
+    )
+
+    driver_name = request.POST.get(
+        "driver_name",
+        "",
+    ).strip()
+
+    start_time = request.POST.get(
+        "start_time",
+        "",
+    ).strip()
+
+    if not run_name:
+        messages.error(
+            request,
+            "Enter a name for the extra run.",
+        )
+
+        return redirect_run_sheet_for_date(
+            shipping_date
+        )
+
+    if len(run_name) > 100:
+        messages.error(
+            request,
+            "The extra run name must be "
+            "100 characters or fewer.",
+        )
+
+        return redirect_run_sheet_for_date(
+            shipping_date
+        )
+
+    standard_names = {
+        region.casefold()
+        for region in TRANSPORT_REGIONS
+    }
+
+    if run_name.casefold() in standard_names:
+        messages.error(
+            request,
+            f"{run_name} is already a standard run.",
+        )
+
+        return redirect_run_sheet_for_date(
+            shipping_date
+        )
+
+    if ExtraRun.objects.filter(
+        shipping_date=shipping_date,
+        name__iexact=run_name,
+    ).exists():
+
+        messages.error(
+            request,
+            f"An extra run named {run_name} "
+            f"already exists for this date.",
+        )
+
+        return redirect_run_sheet_for_date(
+            shipping_date
+        )
+
+    ExtraRun.objects.create(
+        shipping_date=shipping_date,
+        name=run_name,
+    )
+
+    RegionRunInfo.objects.update_or_create(
+        shipping_date=shipping_date,
+        region=run_name,
+        defaults={
+            "driver_name": driver_name,
+            "start_time": start_time,
+        },
+    )
+
+    messages.success(
+        request,
+        f"{run_name} was added. "
+        f"Drag stops into it when ready.",
+    )
+
+    return redirect_run_sheet_for_date(
+        shipping_date
+    )
+
+
+@login_required
+@require_POST
+def delete_extra_run(request, run_id):
+    shipping_date = get_selected_shipping_date(
+        request
+    )
+
+    extra_run = get_object_or_404(
+        ExtraRun,
+        id=run_id,
+        shipping_date=shipping_date,
+    )
+
+    if RunSheet.objects.filter(
+        shipping_date=shipping_date,
+        region=extra_run.name,
+    ).exists():
+
+        messages.error(
+            request,
+            "Move all stops out of the extra "
+            "run before removing it.",
+        )
+
+        return redirect_run_sheet_for_date(
+            shipping_date
+        )
+
+    RegionRunInfo.objects.filter(
+        shipping_date=shipping_date,
+        region=extra_run.name,
+    ).delete()
+
+    run_name = extra_run.name
+    extra_run.delete()
+
+    messages.success(
+        request,
+        f"{run_name} was removed.",
+    )
+
+    return redirect_run_sheet_for_date(
+        shipping_date
+    )
+
+
+@login_required
+@require_POST
 def reorder_run_sheet(request):
     """
-    Saves drag-and-drop ordering for the selected shipping date.
-    Each dragged visible stop may represent one or multiple RunSheet rows.
+    Save drag-and-drop ordering for the selected
+    shipping date.
+
+    Each visible stop may represent one or more
+    RunSheet rows.
     """
     try:
-        payload = json.loads(request.body.decode("utf-8"))
-    except json.JSONDecodeError:
-        return JsonResponse({"success": False, "error": "Invalid JSON."}, status=400)
+        payload = json.loads(
+            request.body.decode("utf-8")
+        )
 
-    shipping_date = parse_date(str(payload.get("shipping_date", "")))
-    regions = payload.get("regions", [])
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Invalid JSON.",
+            },
+            status=400,
+        )
+
+    shipping_date = parse_date(
+        str(
+            payload.get(
+                "shipping_date",
+                "",
+            )
+        )
+    )
+
+    regions = payload.get(
+        "regions",
+        [],
+    )
 
     if not shipping_date:
-        return JsonResponse({"success": False, "error": "Missing shipping date."}, status=400)
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Missing shipping date.",
+            },
+            status=400,
+        )
 
     if not isinstance(regions, list):
-        return JsonResponse({"success": False, "error": "Invalid regions payload."}, status=400)
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "Invalid regions payload.",
+            },
+            status=400,
+        )
 
-    valid_regions = set(TRANSPORT_REGIONS)
+    extra_run_names = (
+        ExtraRun.objects.filter(
+            shipping_date=shipping_date,
+        ).values_list(
+            "name",
+            flat=True,
+        )
+    )
+
+    valid_regions = set(
+        TRANSPORT_REGIONS
+    )
+
+    valid_regions.update(
+        extra_run_names
+    )
+
+    run_info_by_region = {
+        run_info.region: run_info
+        for run_info
+        in RegionRunInfo.objects.filter(
+            shipping_date=shipping_date,
+            region__in=valid_regions,
+        )
+    }
 
     try:
         with transaction.atomic():
             for region_data in regions:
-                region = normalize_transport_region(region_data.get("region", ""))
+                region = normalize_transport_region(
+                    region_data.get(
+                        "region",
+                        "",
+                    )
+                )
 
                 if region not in valid_regions:
                     continue
 
-                stops = region_data.get("stops", [])
+                stops = region_data.get(
+                    "stops",
+                    [],
+                )
 
-                for index, stop in enumerate(stops, start=1):
-                    order_ids = stop.get("order_ids", [])
+                for index, stop in enumerate(
+                    stops,
+                    start=1,
+                ):
+                    order_ids = stop.get(
+                        "order_ids",
+                        [],
+                    )
 
-                    if not isinstance(order_ids, list):
+                    if not isinstance(
+                        order_ids,
+                        list,
+                    ):
                         continue
 
                     clean_ids = []
+
                     for order_id in order_ids:
                         try:
-                            clean_ids.append(int(order_id))
-                        except (TypeError, ValueError):
+                            clean_ids.append(
+                                int(order_id)
+                            )
+
+                        except (
+                            TypeError,
+                            ValueError,
+                        ):
                             pass
 
                     if not clean_ids:
                         continue
 
+                    update_values = {
+                        "region": region,
+                        "load_index": index,
+                    }
+
+                    run_info = (
+                        run_info_by_region.get(
+                            region
+                        )
+                    )
+
+                    if run_info is not None:
+                        update_values.update({
+                            "driver_name": (
+                                run_info.driver_name
+                                or ""
+                            ),
+                            "transport_driver": (
+                                run_info.driver_name
+                                or ""
+                            ),
+                            "transport_start_time": (
+                                run_info.start_time
+                                or ""
+                            ),
+                        })
+
                     RunSheet.objects.filter(
                         id__in=clean_ids,
                         shipping_date=shipping_date,
                     ).update(
-                        region=region,
-                        load_index=index,
+                        **update_values
                     )
 
-        return JsonResponse({"success": True})
+        return JsonResponse({
+            "success": True,
+        })
 
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
-
+    except Exception as exc:
+        return JsonResponse(
+            {
+                "success": False,
+                "error": str(exc),
+            },
+            status=500,
+        )
 
 @login_required
 def update_region_driver(request):
@@ -2701,9 +3062,23 @@ def update_region_driver(request):
     driver_name = request.POST.get("driver_name", "").strip()
     start_time = request.POST.get("start_time", "").strip()
 
-    if not region:
-        messages.error(request, "Region is required.")
-        return redirect_run_sheet_for_date(selected_shipping_date)
+    valid_run_names, _extra_runs = (
+        get_run_names_for_date(
+            selected_shipping_date
+        )
+    )
+
+    if region not in valid_run_names:
+        messages.error(
+            request,
+            "That run is not available "
+            "for this date.",
+        )
+
+        return redirect_run_sheet_for_date(
+            selected_shipping_date
+        )
+
 
     RegionRunInfo.objects.update_or_create(
         shipping_date=selected_shipping_date,
@@ -2738,7 +3113,10 @@ def bol(request, pk=None):
         bill = get_object_or_404(BillOfLading, pk=pk)
 
     customers = BillOfLadingCustomer.objects.all().order_by("name")
-    saved_bills = BillOfLading.objects.all().order_by("-bol_date", "-id")[:25]
+    saved_bills = BillOfLading.objects.all().order_by(
+        "-bol_date",
+        "-id",
+    )[:25]
 
     def clean_money(value):
         return (value or "").strip()
@@ -2748,37 +3126,76 @@ def bol(request, pk=None):
 
     def number_value(value):
         try:
-            return float(str(value or "0").replace(",", "").strip() or 0)
+            return float(
+                str(value or "0")
+                .replace(",", "")
+                .strip() or 0
+            )
         except ValueError:
             return 0
 
     if request.method == "POST":
-        bol_number = clean_text(request.POST.get("bol_number"))
-        bol_date_raw = clean_text(request.POST.get("bol_date"))
+        bol_number = clean_text(
+            request.POST.get("bol_number")
+        )
 
-        bol_date = parse_date(bol_date_raw) if bol_date_raw else timezone.localtime(timezone.now()).date()
+        bol_date_raw = clean_text(
+            request.POST.get("bol_date")
+        )
+
+        bol_date = (
+            parse_date(bol_date_raw)
+            if bol_date_raw
+            else timezone.localtime(
+                timezone.now()
+            ).date()
+        )
+
         if not bol_date:
-            bol_date = timezone.localtime(timezone.now()).date()
+            bol_date = timezone.localtime(
+                timezone.now()
+            ).date()
 
-        consignee_name = clean_text(request.POST.get("consignee_name"))
+        consignee_name = clean_text(
+            request.POST.get("consignee_name")
+        )
 
-        consignee_street = clean_text(request.POST.get("consignee_street"))
-        consignee_city = clean_text(request.POST.get("consignee_city"))
-        consignee_province = clean_text(request.POST.get("consignee_province"))
-        consignee_postal_code = clean_text(request.POST.get("consignee_postal_code"))
-        save_consignee = request.POST.get("save_consignee") == "on"
+        consignee_street = clean_text(
+            request.POST.get("consignee_street")
+        )
+
+        consignee_city = clean_text(
+            request.POST.get("consignee_city")
+        )
+
+        consignee_province = clean_text(
+            request.POST.get("consignee_province")
+        )
+
+        consignee_postal_code = clean_text(
+            request.POST.get("consignee_postal_code")
+        )
+
+        save_consignee = (
+            request.POST.get("save_consignee") == "on"
+        )
 
         if save_consignee and consignee_name:
-            existing_customer = BillOfLadingCustomer.objects.filter(
-                name__iexact=consignee_name
-            ).first()
+            existing_customer = (
+                BillOfLadingCustomer.objects.filter(
+                    name__iexact=consignee_name
+                ).first()
+            )
 
             if existing_customer:
                 existing_customer.address = consignee_street
                 existing_customer.city = consignee_city
                 existing_customer.province = consignee_province
-                existing_customer.postal_code = consignee_postal_code
+                existing_customer.postal_code = (
+                    consignee_postal_code
+                )
                 existing_customer.save()
+
             else:
                 BillOfLadingCustomer.objects.create(
                     name=consignee_name,
@@ -2789,43 +3206,109 @@ def bol(request, pk=None):
                 )
 
         consignee_city_line = " ".join(
-            part for part in [consignee_city, consignee_province, consignee_postal_code]
+            part
+            for part in [
+                consignee_city,
+                consignee_province,
+                consignee_postal_code,
+            ]
             if part
         )
 
         consignee_address = "\n".join(
-            part for part in [consignee_street, consignee_city_line]
+            part
+            for part in [
+                consignee_street,
+                consignee_city_line,
+            ]
             if part
         )
 
-        consignor_name = clean_text(request.POST.get("consignor_name")) or "Diversified Specialty Metals"
+        consignor_name = (
+            clean_text(
+                request.POST.get("consignor_name")
+            )
+            or "Diversified Specialty Metals"
+        )
 
-        consignor_street = clean_text(request.POST.get("consignor_street")) or "20 Hymus"
-        consignor_city = clean_text(request.POST.get("consignor_city")) or "Pointe-Claire"
-        consignor_province = clean_text(request.POST.get("consignor_province")) or "QC"
-        consignor_postal_code = clean_text(request.POST.get("consignor_postal_code")) or "H9R 1C9"
+        consignor_street = (
+            clean_text(
+                request.POST.get("consignor_street")
+            )
+            or "20 Hymus"
+        )
+
+        consignor_city = (
+            clean_text(
+                request.POST.get("consignor_city")
+            )
+            or "Pointe-Claire"
+        )
+
+        consignor_province = (
+            clean_text(
+                request.POST.get("consignor_province")
+            )
+            or "QC"
+        )
+
+        consignor_postal_code = (
+            clean_text(
+                request.POST.get("consignor_postal_code")
+            )
+            or "H9R 1C9"
+        )
 
         consignor_city_line = " ".join(
-            part for part in [consignor_city, consignor_province, consignor_postal_code]
+            part
+            for part in [
+                consignor_city,
+                consignor_province,
+                consignor_postal_code,
+            ]
             if part
         )
 
         consignor_address = "\n".join(
-            part for part in [consignor_street, consignor_city_line]
+            part
+            for part in [
+                consignor_street,
+                consignor_city_line,
+            ]
             if part
         )
 
-        consignor_account_number = clean_text(request.POST.get("consignor_account_number")) or ""
+        consignor_account_number = clean_text(
+            request.POST.get(
+                "consignor_account_number"
+            )
+        )
 
-        declared_value = clean_money(request.POST.get("declared_value"))
+        declared_value = clean_money(
+            request.POST.get("declared_value")
+        )
 
-        freight_collect = request.POST.get("freight_collect") == "on"
-        freight_prepaid = request.POST.get("freight_prepaid") == "on"
+        freight_collect = (
+            request.POST.get("freight_collect") == "on"
+        )
+
+        freight_prepaid = (
+            request.POST.get("freight_prepaid") == "on"
+        )
+
         cod = request.POST.get("cod") == "on"
 
-        cod_amount = clean_money(request.POST.get("cod_amount"))
-        other_charges = clean_money(request.POST.get("other_charges"))
-        total_charges = clean_money(request.POST.get("total_charges"))
+        cod_amount = clean_money(
+            request.POST.get("cod_amount")
+        )
+
+        other_charges = clean_money(
+            request.POST.get("other_charges")
+        )
+
+        total_charges = clean_money(
+            request.POST.get("total_charges")
+        )
 
         if bill is None:
             bill = BillOfLading.objects.create(
@@ -2833,7 +3316,9 @@ def bol(request, pk=None):
                 bol_date=bol_date,
                 consignor_name=consignor_name,
                 consignor_address=consignor_address,
-                consignor_account_number=consignor_account_number,
+                consignor_account_number=(
+                    consignor_account_number
+                ),
                 consignee_name=consignee_name,
                 consignee_address=consignee_address,
                 declared_value=declared_value,
@@ -2846,11 +3331,15 @@ def bol(request, pk=None):
             )
 
         else:
-            bill.bol_number = bol_number or bill.bol_number
+            bill.bol_number = (
+                bol_number or bill.bol_number
+            )
             bill.bol_date = bol_date
             bill.consignor_name = consignor_name
             bill.consignor_address = consignor_address
-            bill.consignor_account_number = consignor_account_number
+            bill.consignor_account_number = (
+                consignor_account_number
+            )
             bill.consignee_name = consignee_name
             bill.consignee_address = consignee_address
             bill.declared_value = declared_value
@@ -2864,31 +3353,90 @@ def bol(request, pk=None):
 
             bill.lines.all().delete()
 
-        order_po_numbers = request.POST.getlist("order_po_number")
-        descriptions = request.POST.getlist("description")
-        total_packages = request.POST.getlist("total_packages")
+        order_po_numbers = request.POST.getlist(
+            "order_po_number"
+        )
+
+        descriptions = request.POST.getlist(
+            "description"
+        )
+
+        total_packages = request.POST.getlist(
+            "total_packages"
+        )
+
+        package_types = request.POST.getlist(
+            "package_type"
+        )
+
         weights = request.POST.getlist("weight")
 
-        for i in range(len(order_po_numbers)):
-            order_po = clean_text(order_po_numbers[i]) if i < len(order_po_numbers) else ""
-            description = clean_text(descriptions[i]) if i < len(descriptions) else ""
-            packages = clean_text(total_packages[i]) if i < len(total_packages) else ""
-            weight = clean_text(weights[i]) if i < len(weights) else ""
+        for index in range(len(order_po_numbers)):
+            order_po = (
+                clean_text(order_po_numbers[index])
+                if index < len(order_po_numbers)
+                else ""
+            )
 
-            if order_po or description or packages or weight:
+            description = (
+                clean_text(descriptions[index])
+                if index < len(descriptions)
+                else ""
+            )
+
+            packages = (
+                clean_text(total_packages[index])
+                if index < len(total_packages)
+                else ""
+            )
+
+            package_type = (
+                clean_text(package_types[index])
+                if index < len(package_types)
+                else ""
+            )
+
+            weight = (
+                clean_text(weights[index])
+                if index < len(weights)
+                else ""
+            )
+
+            if (
+                package_type
+                not in BillOfLadingLine.PackageType.values
+            ):
+                package_type = ""
+
+            if (
+                order_po
+                or description
+                or packages
+                or weight
+            ):
                 BillOfLadingLine.objects.create(
                     bill=bill,
                     order_po_number=order_po,
                     description=description,
                     total_packages=packages,
+                    package_type=package_type,
                     weight=weight,
                 )
 
-        messages.success(request, "Bill of Lading saved.")
-        return redirect("bol_edit", pk=bill.pk)
+        messages.success(
+            request,
+            "Bill of Lading saved.",
+        )
+
+        return redirect(
+            "bol_edit",
+            pk=bill.pk,
+        )
 
     if bill:
-        existing_lines = list(bill.lines.all())
+        existing_lines = list(
+            bill.lines.all()
+        )
     else:
         existing_lines = []
 
@@ -2898,20 +3446,37 @@ def bol(request, pk=None):
         line_form_rows.append(None)
 
     print_lines = existing_lines[:]
+
     while len(print_lines) < 6:
         print_lines.append(None)
 
-    total_packages_sum = sum(number_value(line.total_packages) for line in existing_lines)
-    total_weight_sum = sum(number_value(line.weight) for line in existing_lines)
+    package_totals = {
+        BillOfLadingLine.PackageType.COIL: 0,
+        BillOfLadingLine.PackageType.SKID: 0,
+        BillOfLadingLine.PackageType.BUNDLE: 0,
+    }
 
-    if total_packages_sum.is_integer():
-        total_packages_sum = int(total_packages_sum)
+    for line in existing_lines:
+        if line.package_type in package_totals:
+            package_totals[line.package_type] += (
+                number_value(line.total_packages)
+            )
 
-    if total_weight_sum.is_integer():
+    total_weight_sum = sum(
+        number_value(line.weight)
+        for line in existing_lines
+    )
+
+    for package_type, total in package_totals.items():
+        if float(total).is_integer():
+            package_totals[package_type] = int(total)
+
+    if float(total_weight_sum).is_integer():
         total_weight_sum = int(total_weight_sum)
 
     def split_address(address):
         lines = (address or "").splitlines()
+
         street = lines[0] if len(lines) > 0 else ""
         city = ""
         province = ""
@@ -2919,10 +3484,15 @@ def bol(request, pk=None):
 
         if len(lines) > 1:
             parts = lines[1].split()
+
             if len(parts) >= 3:
-                postal_code = " ".join(parts[-2:])
+                postal_code = " ".join(
+                    parts[-2:]
+                )
                 province = parts[-3]
-                city = " ".join(parts[:-3])
+                city = " ".join(
+                    parts[:-3]
+                )
             else:
                 city = lines[1]
 
@@ -2934,8 +3504,14 @@ def bol(request, pk=None):
         }
 
     if bill:
-        consignor_address_parts = split_address(bill.consignor_address)
-        consignee_address_parts = split_address(bill.consignee_address)
+        consignor_address_parts = split_address(
+            bill.consignor_address
+        )
+
+        consignee_address_parts = split_address(
+            bill.consignee_address
+        )
+
     else:
         consignor_address_parts = {
             "street": "20 Hymus",
@@ -2943,6 +3519,7 @@ def bol(request, pk=None):
             "province": "QC",
             "postal_code": "H9R 1C9",
         }
+
         consignee_address_parts = {
             "street": "",
             "city": "",
@@ -2950,15 +3527,35 @@ def bol(request, pk=None):
             "postal_code": "",
         }
 
-    return render(request, "core/bol/bol.html", {
+    context = {
         "bill": bill,
         "customers": customers,
         "saved_bills": saved_bills,
-        "today": timezone.localtime(timezone.now()).date(),
+        "today": timezone.localtime(
+            timezone.now()
+        ).date(),
         "line_form_rows": line_form_rows,
         "print_lines": print_lines,
-        "total_packages_sum": total_packages_sum,
+        "total_coils": package_totals[
+            BillOfLadingLine.PackageType.COIL
+        ],
+        "total_skids": package_totals[
+            BillOfLadingLine.PackageType.SKID
+        ],
+        "total_bundles": package_totals[
+            BillOfLadingLine.PackageType.BUNDLE
+        ],
         "total_weight_sum": total_weight_sum,
-        "consignor_address_parts": consignor_address_parts,
-        "consignee_address_parts": consignee_address_parts,
-    })
+        "consignor_address_parts": (
+            consignor_address_parts
+        ),
+        "consignee_address_parts": (
+            consignee_address_parts
+        ),
+    }
+
+    return render(
+        request,
+        "core/bol/bol.html",
+        context,
+    )
