@@ -1,8 +1,5 @@
 from django.db import models
 from django.utils import timezone
-from PIL import Image
-import io
-from django.core.files.base import ContentFile
 
 class CustomerList(models.Model):
     # We changed managed to True so you can edit these in the app
@@ -392,3 +389,139 @@ class BillOfLadingLine(models.Model):
     description = models.TextField(blank=True)
     total_packages = models.CharField(max_length=50, blank=True)
     weight = models.CharField(max_length=50, blank=True)
+
+class InventoryReport(models.Model):
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.CharField(max_length=150, blank=True)
+
+    warehouse_20_filename = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    warehouse_21_filename = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    remarks_filename = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return (
+            f"Inventory report - "
+            f"{self.uploaded_at:%Y-%m-%d %H:%M}"
+        )
+
+
+class InventoryItem(models.Model):
+    report = models.ForeignKey(
+        InventoryReport,
+        related_name="items",
+        on_delete=models.CASCADE,
+    )
+
+    warehouse = models.CharField(max_length=10)
+
+    log_number = models.CharField(
+        max_length=100,
+        db_index=True,
+    )
+
+    description = models.TextField(blank=True)
+
+    bin_location = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    available_pieces = models.IntegerField(
+        blank=True,
+        null=True,
+    )
+
+    available_weight = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        blank=True,
+        null=True,
+    )
+
+    on_hand_pieces = models.IntegerField(
+        blank=True,
+        null=True,
+    )
+
+    on_hand_weight = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        blank=True,
+        null=True,
+    )
+
+    remarks = models.TextField(blank=True)
+
+    class Meta:
+        ordering = [
+            "log_number",
+            "warehouse",
+            "bin_location",
+            "id",
+        ]
+
+    def __str__(self):
+        return self.log_number
+
+
+class HymusTransferItem(models.Model):
+    warehouse = models.CharField(
+        max_length=10,
+        blank=True,
+    )
+
+    log_number = models.CharField(max_length=100)
+
+    description = models.TextField(blank=True)
+
+    bin_location = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    notes = models.TextField(blank=True)
+
+    added_by = models.CharField(
+        max_length=150,
+        blank=True,
+    )
+
+    added_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["added_at", "id"]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "warehouse",
+                    "log_number",
+                    "bin_location",
+                ],
+                name=(
+                    "unique_hymus_transfer_"
+                    "inventory_location"
+                ),
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.log_number} - "
+            f"{self.bin_location}"
+        )

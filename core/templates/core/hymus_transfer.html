@@ -1,0 +1,1158 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block container_type %}
+container-fluid px-3 px-xl-4
+{% endblock %}
+
+{% block content %}
+<div class="transfer-page pb-5">
+
+    <div class="d-flex flex-column flex-lg-row
+                justify-content-between align-items-lg-start
+                gap-3 mb-4 mt-2 no-print">
+
+        <div>
+            <a href="{% url 'reports' %}"
+               class="small text-decoration-none">
+
+                <i class="bi bi-arrow-left me-1"></i>
+                Back to Inventory Report
+            </a>
+
+            <h2 class="fw-bold mt-2 mb-1">
+                26 Hymus Transfer
+            </h2>
+
+            <p class="text-muted mb-0">
+                Search and select one inventory log at a time.
+            </p>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+
+            <button class="btn btn-outline-primary
+                           print-document-button"
+                    type="button"
+                    data-document="sheets"
+                    data-row-count="{{ sheet_count }}"
+                    {% if not sheet_items %}disabled{% endif %}>
+
+                <i class="bi bi-printer me-2"></i>
+                Print Sheets
+            </button>
+
+            <button class="btn btn-outline-primary
+                           print-document-button"
+                    type="button"
+                    data-document="bundles"
+                    data-row-count="{{ bundle_count }}"
+                    {% if not bundle_items %}disabled{% endif %}>
+
+                <i class="bi bi-printer me-2"></i>
+                Print Bundles
+            </button>
+
+            <button class="btn btn-outline-danger"
+                    type="button"
+                    data-bs-toggle="modal"
+                    data-bs-target="#clear-transfer-modal"
+                    {% if not transfer_items %}disabled{% endif %}>
+
+                <i class="bi bi-trash3 me-2"></i>
+                Clear transfer
+            </button>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+
+            <div class="alert
+                        alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %}
+                        alert-dismissible fade show no-print"
+                 role="alert">
+
+                {{ message }}
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert">
+                </button>
+            </div>
+
+        {% endfor %}
+    {% endif %}
+
+    <div class="card border-0 shadow-sm
+                transfer-card mb-4 no-print">
+
+        <div class="card-body p-4">
+
+            <h3 class="h5 fw-bold mb-1">
+                Find an inventory log
+            </h3>
+
+            <p class="text-muted small mb-3">
+                Start typing a log number, then click the
+                matching inventory row to add it.
+            </p>
+
+            {% if current_report %}
+
+                <label for="inventory-log-search"
+                       class="form-label fw-semibold">
+                    Log number
+                </label>
+
+                <div class="input-group search-box">
+
+                    <span class="input-group-text bg-white">
+                        <i class="bi bi-search"></i>
+                    </span>
+
+                    <input id="inventory-log-search"
+                           type="search"
+                           class="form-control form-control-lg"
+                           placeholder="Type a log number..."
+                           autocomplete="off"
+                           data-search-url="{% url 'inventory_log_search' %}"
+                           autofocus>
+                </div>
+
+                <div id="search-status"
+                     class="small text-muted mt-2">
+
+                    Start typing to search the current inventory.
+                </div>
+
+                <div id="inventory-search-results"
+                     class="inventory-results mt-3">
+                </div>
+
+                <div id="manual-prompt"
+                     class="manual-prompt d-none mt-3">
+
+                    <span>
+                        No inventory logs matched your search.
+                    </span>
+
+                    <button type="button"
+                            class="btn btn-sm
+                                   btn-outline-primary ms-2"
+                            id="show-manual-entry">
+
+                        Add this log manually
+                    </button>
+                </div>
+
+                <form method="post"
+                      id="inventory-add-form"
+                      class="d-none">
+
+                    {% csrf_token %}
+
+                    <input type="hidden"
+                           name="action"
+                           value="add_inventory">
+
+                    <input type="hidden"
+                           name="inventory_item_id"
+                           id="inventory-item-id">
+                </form>
+
+            {% else %}
+
+                <div class="alert alert-warning">
+                    There is no saved Inventory Report to
+                    search. You can add a log manually below.
+                </div>
+
+            {% endif %}
+
+            <div class="mt-3">
+
+                <button type="button"
+                        class="btn btn-link px-0
+                               text-decoration-none"
+                        id="toggle-manual-entry">
+
+                    <i class="bi bi-pencil-square me-1"></i>
+                    Log not found? Add it manually
+                </button>
+            </div>
+
+            <div id="manual-entry-panel"
+                 class="manual-entry-panel d-none mt-3">
+
+                <div class="border rounded-3
+                            p-3 p-md-4 bg-light">
+
+                    <h4 class="h6 fw-bold mb-3">
+                        Manual log details
+                    </h4>
+
+                    <form method="post"
+                          id="manual-entry-form">
+
+                        {% csrf_token %}
+
+                        <input type="hidden"
+                               name="action"
+                               value="add_manual">
+
+                        <div class="row g-3">
+
+                            <div class="col-12 col-md-3">
+
+                                <label for="manual-log-number"
+                                       class="form-label fw-semibold">
+                                    Log number
+                                </label>
+
+                                <input id="manual-log-number"
+                                       name="manual_log_number"
+                                       type="text"
+                                       class="form-control
+                                              text-uppercase"
+                                       required>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+
+                                <label for="manual-description"
+                                       class="form-label fw-semibold">
+                                    Description
+                                </label>
+
+                                <input id="manual-description"
+                                       name="manual_description"
+                                       type="text"
+                                       class="form-control"
+                                       required>
+                            </div>
+
+                            <div class="col-12 col-md-3">
+
+                                <label for="manual-bin-location"
+                                       class="form-label fw-semibold">
+                                    Location
+                                </label>
+
+                                <input id="manual-bin-location"
+                                       name="manual_bin_location"
+                                       type="text"
+                                       class="form-control"
+                                       required>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-3">
+
+                            <button type="submit"
+                                    class="btn btn-primary">
+
+                                <i class="bi
+                                          bi-plus-circle me-2"></i>
+
+                                Add manual log
+                            </button>
+
+                            <button type="button"
+                                    class="btn
+                                           btn-outline-secondary"
+                                    id="cancel-manual-entry">
+
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% for document in transfer_documents %}
+
+        <section class="transfer-document mb-4"
+                 data-print-document="{{ document.key }}">
+
+            <div class="print-heading">
+
+                <h1>
+                    {{ document.title }}
+                </h1>
+
+                <div>
+                    Printed
+                    {{ printed_on|date:"M j, Y g:i A" }}
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm
+                        transfer-card transfer-sheet">
+
+                <div class="card-body p-0">
+
+                    <div class="p-4 border-bottom no-print">
+
+                        <h3 class="h5 fw-bold mb-1">
+                            {{ document.title }}
+                        </h3>
+
+                        <div class="text-muted small">
+                            {{ document.count|intcomma }}
+                            row{{ document.count|pluralize }}
+
+                            &middot;
+
+                            sorted by location
+                        </div>
+                    </div>
+
+                    {% if document.items %}
+
+                        <div class="table-responsive">
+
+                            <table class="table transfer-table
+                                          align-middle mb-0">
+
+                                <thead>
+                                    <tr>
+                                        <th>Log</th>
+                                        <th>Description</th>
+                                        <th>Location</th>
+                                        <th>Notes</th>
+
+                                        <th class="text-end no-print">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {% for item in document.items %}
+
+                                        <tr id="transfer-{{ item.id }}">
+
+                                            <td class="fw-bold text-nowrap">
+                                                {{ item.log_number }}
+                                            </td>
+
+                                            <td class="transfer-description">
+                                                {{ item.description }}
+                                            </td>
+
+                                            <td class="text-nowrap">
+                                                {{ item.bin_location }}
+                                            </td>
+
+                                            <td class="transfer-notes">
+
+                                                <form method="post"
+                                                      action="{% url 'update_hymus_transfer_note' item.id %}"
+                                                      class="note-form no-print">
+
+                                                    {% csrf_token %}
+
+                                                    <textarea name="notes"
+                                                              class="form-control
+                                                                     note-input"
+                                                              rows="2"
+                                                              placeholder="Add optional notes...">{{ item.notes }}</textarea>
+
+                                                    <button type="submit"
+                                                            class="btn btn-sm
+                                                                   btn-outline-primary
+                                                                   mt-2">
+
+                                                        <i class="bi
+                                                                  bi-check2 me-1">
+                                                        </i>
+
+                                                        Save note
+                                                    </button>
+                                                </form>
+
+                                                <div class="note-print">
+                                                    {{ item.notes|linebreaksbr }}
+                                                </div>
+                                            </td>
+
+                                            <td class="text-end no-print">
+
+                                                <form method="post"
+                                                      action="{% url 'remove_hymus_transfer_item' item.id %}"
+                                                      onsubmit="return confirm('Remove log {{ item.log_number|escapejs }} from the transfer?');">
+
+                                                    {% csrf_token %}
+
+                                                    <button type="submit"
+                                                            class="btn btn-sm
+                                                                   btn-outline-danger"
+                                                            title="Remove row">
+
+                                                        <i class="bi bi-x-lg"></i>
+
+                                                        <span class="visually-hidden">
+                                                            Remove
+                                                        </span>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                    {% else %}
+
+                        <div class="text-center py-4 px-3
+                                    empty-transfer no-print">
+
+                            No {{ document.key }} have been added.
+                        </div>
+
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+    {% endfor %}
+</div>
+
+<div class="modal fade no-print"
+     id="clear-transfer-modal"
+     tabindex="-1"
+     aria-labelledby="clear-transfer-title"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow">
+
+            <div class="modal-header">
+
+                <h2 class="modal-title fs-5"
+                    id="clear-transfer-title">
+
+                    Clear 26 Hymus Transfer?
+                </h2>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal">
+                </button>
+            </div>
+
+            <div class="modal-body">
+                This permanently removes all
+                {{ transfer_count|intcomma }}
+                transfer rows and their notes.
+
+                The Inventory Report will not be affected.
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">
+
+                    Cancel
+                </button>
+
+                <form method="post"
+                      action="{% url 'clear_hymus_transfer' %}">
+
+                    {% csrf_token %}
+
+                    <input type="hidden"
+                           name="confirm_clear"
+                           value="yes">
+
+                    <button type="submit"
+                            class="btn btn-danger">
+
+                        Clear entire transfer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .transfer-page {
+        max-width: 1500px;
+        margin: 0 auto;
+    }
+
+    .transfer-card {
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .search-box {
+        max-width: 760px;
+    }
+
+    #inventory-log-search {
+        text-transform: uppercase;
+    }
+
+    .inventory-results {
+        max-width: 1000px;
+        display: grid;
+        gap: 0.65rem;
+    }
+
+    .inventory-result {
+        width: 100%;
+        display: grid;
+
+        grid-template-columns:
+            minmax(120px, 0.7fr)
+            minmax(280px, 2fr)
+            minmax(120px, 0.7fr)
+            auto;
+
+        gap: 1rem;
+        align-items: center;
+        padding: 0.85rem 1rem;
+        border: 1px solid #d6dee8;
+        border-radius: 12px;
+        background: white;
+        color: #212529;
+        text-align: left;
+        transition: 0.15s ease;
+    }
+
+    button.inventory-result:hover:not(:disabled) {
+        border-color: #0d6efd;
+        background: #f4f8ff;
+        transform: translateY(-1px);
+    }
+
+    .inventory-result:disabled {
+        background: #f8f9fa;
+        color: #6c757d;
+        cursor: default;
+    }
+
+    .result-log {
+        font-weight: 700;
+        color: #0d2c54;
+    }
+
+    .result-description {
+        overflow-wrap: anywhere;
+    }
+
+    .result-location {
+        font-weight: 600;
+    }
+
+    .manual-prompt {
+        max-width: 760px;
+        padding: 0.85rem 1rem;
+        border-radius: 12px;
+        background: #fff8e1;
+        color: #664d03;
+    }
+
+    .manual-entry-panel {
+        max-width: 1100px;
+    }
+
+    .transfer-table thead th {
+        background: #0d2c54;
+        color: white;
+        border: 0;
+        padding: 0.9rem;
+        white-space: nowrap;
+    }
+
+    .transfer-table tbody td {
+        padding: 0.9rem;
+        vertical-align: top;
+    }
+
+    .transfer-description {
+        min-width: 360px;
+        max-width: 600px;
+    }
+
+    .transfer-notes {
+        min-width: 320px;
+        width: 32%;
+    }
+
+    .note-input {
+        min-height: 70px;
+        resize: vertical;
+    }
+
+    .note-print,
+    .print-heading {
+        display: none;
+    }
+
+    .empty-transfer {
+        background: #f8fafc;
+    }
+
+    @media (max-width: 900px) {
+        .inventory-result {
+            grid-template-columns: 1fr;
+            gap: 0.25rem;
+        }
+    }
+
+    @media print {
+        @page {
+            size: landscape;
+            margin: 0.25in;
+        }
+
+        html,
+        body {
+            background: white !important;
+            font-size:
+                var(--print-font-size, 8pt);
+        }
+
+        .navbar,
+        .no-print {
+            display: none !important;
+        }
+
+        .container-fluid,
+        .transfer-page {
+            width: 100% !important;
+            max-width: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .transfer-document {
+            display: none !important;
+        }
+
+        body.print-sheets
+        .transfer-document[data-print-document="sheets"],
+        body.print-bundles
+        .transfer-document[data-print-document="bundles"] {
+            display: block !important;
+
+            zoom:
+                var(--print-zoom, 1);
+        }
+
+        .print-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            margin-bottom: 0.12in;
+            padding-bottom: 0.06in;
+            border-bottom: 2px solid #0d2c54;
+        }
+
+        .print-heading h1 {
+            margin: 0;
+            font-size: 16pt;
+        }
+
+        .transfer-card {
+            box-shadow: none !important;
+            border: 0 !important;
+            border-radius: 0;
+            overflow: visible;
+        }
+
+        .table-responsive {
+            overflow: visible !important;
+        }
+
+        .transfer-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            margin: 0 !important;
+        }
+
+        .transfer-table thead {
+            display: table-header-group;
+        }
+
+        .transfer-table tr {
+            break-inside: avoid;
+        }
+
+        .transfer-table thead th {
+            background: #dce6f1 !important;
+            color: #000 !important;
+            border: 1px solid #555;
+            padding: 2px 4px;
+            line-height: 1.05;
+        }
+
+        .transfer-table tbody td {
+            border: 1px solid #777;
+
+            padding:
+                var(--print-cell-padding, 2px)
+                4px;
+
+            line-height: 1.05;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+        }
+
+        .transfer-table th:nth-child(1),
+        .transfer-table td:nth-child(1) {
+            width: 14%;
+        }
+
+        .transfer-table th:nth-child(2),
+        .transfer-table td:nth-child(2) {
+            width: 44%;
+        }
+
+        .transfer-table th:nth-child(3),
+        .transfer-table td:nth-child(3) {
+            width: 14%;
+        }
+
+        .transfer-table th:nth-child(4),
+        .transfer-table td:nth-child(4) {
+            width: 28%;
+        }
+
+        .transfer-description,
+        .transfer-notes {
+            min-width: 0;
+            max-width: none;
+            width: auto;
+        }
+
+        .note-print {
+            display: block;
+            min-height: 0.16in;
+            white-space: pre-wrap;
+        }
+    }
+</style>
+
+<script>
+    (() => {
+        const searchInput =
+            document.getElementById(
+                "inventory-log-search"
+            );
+
+        const resultsContainer =
+            document.getElementById(
+                "inventory-search-results"
+            );
+
+        const searchStatus =
+            document.getElementById(
+                "search-status"
+            );
+
+        const manualPrompt =
+            document.getElementById(
+                "manual-prompt"
+            );
+
+        const addForm =
+            document.getElementById(
+                "inventory-add-form"
+            );
+
+        const itemIdInput =
+            document.getElementById(
+                "inventory-item-id"
+            );
+
+        const manualPanel =
+            document.getElementById(
+                "manual-entry-panel"
+            );
+
+        const manualLogInput =
+            document.getElementById(
+                "manual-log-number"
+            );
+
+        const toggleManualButton =
+            document.getElementById(
+                "toggle-manual-entry"
+            );
+
+        const showManualButton =
+            document.getElementById(
+                "show-manual-entry"
+            );
+
+        const cancelManualButton =
+            document.getElementById(
+                "cancel-manual-entry"
+            );
+
+        let searchTimer = null;
+        let activeRequest = null;
+
+        const originalDocumentTitle =
+            document.title;
+
+        function openManualEntry() {
+            manualPanel.classList.remove(
+                "d-none"
+            );
+
+            if (
+                searchInput
+                && !manualLogInput.value
+            ) {
+                manualLogInput.value =
+                    searchInput.value
+                    .trim()
+                    .toUpperCase();
+            }
+
+            manualLogInput.focus();
+        }
+
+        function closeManualEntry() {
+            manualPanel.classList.add(
+                "d-none"
+            );
+        }
+
+        toggleManualButton.addEventListener(
+            "click",
+            openManualEntry
+        );
+
+        cancelManualButton.addEventListener(
+            "click",
+            closeManualEntry
+        );
+
+        if (showManualButton) {
+            showManualButton.addEventListener(
+                "click",
+                openManualEntry
+            );
+        }
+
+        function addResultText(
+            parent,
+            className,
+            value
+        ) {
+            const element =
+                document.createElement(
+                    "span"
+                );
+
+            element.className = className;
+            element.textContent = value || "—";
+
+            parent.appendChild(element);
+        }
+
+        function renderResults(
+            results,
+            query
+        ) {
+            resultsContainer.replaceChildren();
+
+            if (!results.length) {
+                searchStatus.textContent =
+                    `No inventory logs found for “${query}”.`;
+
+                manualPrompt.classList.remove(
+                    "d-none"
+                );
+
+                return;
+            }
+
+            manualPrompt.classList.add(
+                "d-none"
+            );
+
+            searchStatus.textContent =
+                `${results.length} matching inventory row`
+                + `${results.length === 1 ? "" : "s"}. `
+                + "Click one to add it.";
+
+            results.forEach((result) => {
+                const button =
+                    document.createElement(
+                        "button"
+                    );
+
+                button.type = "button";
+
+                button.className =
+                    "inventory-result";
+
+                button.disabled =
+                    result.already_added;
+
+                addResultText(
+                    button,
+                    "result-log",
+                    result.log_number
+                );
+
+                addResultText(
+                    button,
+                    "result-description",
+                    result.description
+                );
+
+                addResultText(
+                    button,
+                    "result-location",
+                    result.bin_location
+                );
+
+                addResultText(
+                    button,
+                    "result-action",
+                    result.already_added
+                        ? "Already added"
+                        : "Add"
+                );
+
+                if (!result.already_added) {
+                    button.addEventListener(
+                        "click",
+                        () => {
+                            itemIdInput.value =
+                                result.id;
+
+                            button.disabled = true;
+
+                            button.querySelector(
+                                ".result-action"
+                            ).textContent =
+                                "Adding...";
+
+                            addForm.submit();
+                        }
+                    );
+                }
+
+                resultsContainer.appendChild(
+                    button
+                );
+            });
+        }
+
+        async function searchInventory() {
+            const query =
+                searchInput.value.trim();
+
+            if (!query) {
+                resultsContainer
+                    .replaceChildren();
+
+                manualPrompt.classList.add(
+                    "d-none"
+                );
+
+                searchStatus.textContent =
+                    "Start typing to search "
+                    + "the current inventory.";
+
+                return;
+            }
+
+            if (activeRequest) {
+                activeRequest.abort();
+            }
+
+            activeRequest =
+                new AbortController();
+
+            searchStatus.textContent =
+                "Searching inventory...";
+
+            try {
+                const url =
+                    `${searchInput.dataset.searchUrl}`
+                    + `?q=${encodeURIComponent(query)}`;
+
+                const response = await fetch(
+                    url,
+                    {
+                        headers: {
+                            "X-Requested-With":
+                                "XMLHttpRequest"
+                        },
+                        signal:
+                            activeRequest.signal
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        "Search request failed"
+                    );
+                }
+
+                const data =
+                    await response.json();
+
+                renderResults(
+                    data.results,
+                    query
+                );
+
+            } catch (error) {
+                if (
+                    error.name !== "AbortError"
+                ) {
+                    resultsContainer
+                        .replaceChildren();
+
+                    searchStatus.textContent =
+                        "Inventory search could "
+                        + "not be completed. "
+                        + "Please try again.";
+                }
+            }
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener(
+                "input",
+                () => {
+                    clearTimeout(
+                        searchTimer
+                    );
+
+                    searchTimer = setTimeout(
+                        searchInventory,
+                        180
+                    );
+                }
+            );
+        }
+
+        document.querySelectorAll(
+            ".note-input"
+        ).forEach((input) => {
+            const printValue = input
+                .closest(".transfer-notes")
+                .querySelector(".note-print");
+
+            input.addEventListener(
+                "input",
+                () => {
+                    printValue.textContent =
+                        input.value;
+                }
+            );
+        });
+
+        function resetPrintMode() {
+            document.body.classList.remove(
+                "print-sheets",
+                "print-bundles"
+            );
+
+            document.title =
+                originalDocumentTitle;
+
+            document.documentElement
+                .style.removeProperty(
+                    "--print-zoom"
+                );
+
+            document.documentElement
+                .style.removeProperty(
+                    "--print-font-size"
+                );
+
+            document.documentElement
+                .style.removeProperty(
+                    "--print-cell-padding"
+                );
+        }
+
+        document.querySelectorAll(
+            ".print-document-button"
+        ).forEach((button) => {
+            button.addEventListener(
+                "click",
+                () => {
+                    const documentKey =
+                        button.dataset.document;
+
+                    const rowCount = Number(
+                        button.dataset.rowCount
+                        || 0
+                    );
+
+                    resetPrintMode();
+
+                    document.body.classList.add(
+                        `print-${documentKey}`
+                    );
+
+                    document.title =
+                        documentKey === "sheets"
+                            ? "26 Hymus Sheets"
+                            : "26 Hymus Bundles";
+
+                    let zoom = 1;
+                    let fontSize = 8;
+                    let cellPadding = 2;
+
+                    if (rowCount > 24) {
+                        zoom =
+                            24 / rowCount;
+
+                        fontSize = 7;
+                        cellPadding = 1;
+                    }
+
+                    document.documentElement
+                        .style.setProperty(
+                            "--print-zoom",
+                            zoom
+                        );
+
+                    document.documentElement
+                        .style.setProperty(
+                            "--print-font-size",
+                            `${fontSize}pt`
+                        );
+
+                    document.documentElement
+                        .style.setProperty(
+                            "--print-cell-padding",
+                            `${cellPadding}px`
+                        );
+
+                    window.print();
+                }
+            );
+        });
+
+        window.addEventListener(
+            "afterprint",
+            resetPrintMode
+        );
+    })();
+</script>
+{% endblock %}

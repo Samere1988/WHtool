@@ -16,7 +16,7 @@ urlpatterns = [
     path('stats/daily-runs/', views.daily_run_stats, name='daily_run_stats'),
     path('stats/employees/', views.employee_stats, name='employee_stats'),
     path('history/', views.run_sheet_history, name='run_sheet_history'),
-    path("reports/", report_views.reports, name="reports"),
+
 
     # --- RUN SHEET ACTIONS ---
     path('add-to-run-sheet/', views.add_to_run_sheet, name='add_to_run_sheet'),
@@ -101,5 +101,45 @@ urlpatterns = [
 
     path('bol/', views.bol, name='bol'),
     path('bol/<int:pk>/', views.bol, name='bol_edit'),
+
+    # --- INVENTORY REPORT ---
+    path(
+        "reports/",
+        report_views.reports,
+        name="reports",
+    ),
+    path(
+        "reports/download/",
+        report_views.download_inventory_report,
+        name="download_inventory_report",
+    ),
+
+    # --- 26 HYMUS TRANSFER ---
+    path(
+        "reports/26-hymus-transfer/",
+        report_views.hymus_transfer,
+        name="hymus_transfer",
+    ),
+    path(
+        "reports/26-hymus-transfer/search/",
+        report_views.inventory_log_search,
+        name="inventory_log_search",
+    ),
+    path(
+        "reports/26-hymus-transfer/clear/",
+        report_views.clear_hymus_transfer,
+        name="clear_hymus_transfer",
+    ),
+    path(
+        "reports/26-hymus-transfer/<int:item_id>/notes/",
+        report_views.update_hymus_transfer_note,
+        name="update_hymus_transfer_note",
+    ),
+    path(
+        "reports/26-hymus-transfer/<int:item_id>/remove/",
+        report_views.remove_hymus_transfer_item,
+        name="remove_hymus_transfer_item",
+    ),
+
 
 ]
