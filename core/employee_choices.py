@@ -1,0 +1,17 @@
+WAREHOUSE_EMPLOYEES = (
+    "Ahmad",
+    "Mikey",
+    "Michael",
+    "Danilio",
+    "Kasim",
+    "Carl",
+    "David",
+    "Douglas",
+    "Jean Duval",
+    "Jean Thomas",
+    "Cooper",
+    "Aperam",
+    "Elvis",
+    "Leon",
+    "Ismail",
+)

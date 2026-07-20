@@ -5,15 +5,17 @@
     .stats-landing-card {
         border: none;
         border-radius: 1.25rem;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.10);
-        transition: transform 0.18s ease, box-shadow 0.18s ease;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+        transition:
+            transform 0.18s ease,
+            box-shadow 0.18s ease;
         height: 100%;
         overflow: hidden;
     }
 
     .stats-landing-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 10px 26px rgba(0,0,0,0.16);
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
     }
 
     .stats-icon-circle {
@@ -28,6 +30,8 @@
     }
 
     .stats-card-link {
+        display: block;
+        height: 100%;
         text-decoration: none;
         color: inherit;
     }
@@ -35,29 +39,58 @@
     .stats-card-link:hover {
         color: inherit;
     }
+
+    .stats-card-body {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .stats-card-body .btn {
+        margin-top: auto;
+        align-self: flex-start;
+    }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-4 mt-2">
+<div class="d-flex justify-content-between
+            align-items-center mb-4 mt-2">
     <div>
         <h2 class="fw-bold mb-0">
-            <i class="bi bi-graph-up-arrow me-2"></i>Stats
+            <i class="bi bi-graph-up-arrow me-2"></i>
+            Stats
         </h2>
-        <p class="text-muted small mb-0">Choose which statistics dashboard you want to view.</p>
+
+        <p class="text-muted small mb-0">
+            Choose which statistics dashboard you want to view.
+        </p>
     </div>
 </div>
 
 <div class="row g-4">
-    <div class="col-12 col-lg-4">
-        <a href="{% url 'container_stats' %}" class="stats-card-link">
+
+    <!-- Container Stats -->
+    <div class="col-12 col-md-6 col-xl-3">
+        <a href="{% url 'container_stats' %}"
+           class="stats-card-link">
+
             <div class="card stats-landing-card">
-                <div class="card-body p-4">
-                    <div class="stats-icon-circle bg-primary-subtle text-primary">
+                <div class="card-body p-4 stats-card-body">
+
+                    <div class="stats-icon-circle
+                                bg-primary-subtle text-primary">
                         <i class="bi bi-box-seam"></i>
                     </div>
-                    <h3 class="fw-bold mb-2">Container Stats</h3>
+
+                    <h3 class="h4 fw-bold mb-2">
+                        Container Stats
+                    </h3>
+
                     <p class="text-muted mb-4">
-                        Track unloaded containers, photos, unload dates, unloaded by, and unload locations.
+                        Track unloaded containers, photos,
+                        unload dates, unloaded by, and unload
+                        locations.
                     </p>
+
                     <span class="btn btn-primary fw-bold">
                         Open Container Stats
                     </span>
@@ -66,17 +99,29 @@
         </a>
     </div>
 
-    <div class="col-12 col-lg-4">
-        <a href="{% url 'daily_run_stats' %}" class="stats-card-link">
+    <!-- Daily Run Stats -->
+    <div class="col-12 col-md-6 col-xl-3">
+        <a href="{% url 'daily_run_stats' %}"
+           class="stats-card-link">
+
             <div class="card stats-landing-card">
-                <div class="card-body p-4">
-                    <div class="stats-icon-circle bg-success-subtle text-success">
+                <div class="card-body p-4 stats-card-body">
+
+                    <div class="stats-icon-circle
+                                bg-success-subtle text-success">
                         <i class="bi bi-truck"></i>
                     </div>
-                    <h3 class="fw-bold mb-2">Daily Run Stats</h3>
+
+                    <h3 class="h4 fw-bold mb-2">
+                        Daily Run Stats
+                    </h3>
+
                     <p class="text-muted mb-4">
-                        View committed run sheet totals by day, including weight, skids, bundles, and coils.
+                        View run-sheet totals by day, including
+                        weight, skids, bundles, coils, pickups,
+                        and returns.
                     </p>
+
                     <span class="btn btn-success fw-bold">
                         Open Daily Run Stats
                     </span>
@@ -85,23 +130,68 @@
         </a>
     </div>
 
-    <div class="col-12 col-lg-4">
-        <a href="{% url 'employee_stats' %}" class="stats-card-link">
+    <!-- Employee Stats -->
+    <div class="col-12 col-md-6 col-xl-3">
+        <a href="{% url 'employee_stats' %}"
+           class="stats-card-link">
+
             <div class="card stats-landing-card">
-                <div class="card-body p-4">
-                    <div class="stats-icon-circle bg-warning-subtle text-warning">
+                <div class="card-body p-4 stats-card-body">
+
+                    <div class="stats-icon-circle
+                                bg-warning-subtle text-warning">
                         <i class="bi bi-people-fill"></i>
                     </div>
-                    <h3 class="fw-bold mb-2">Employee Stats</h3>
+
+                    <h3 class="h4 fw-bold mb-2">
+                        Employee Stats
+                    </h3>
+
                     <p class="text-muted mb-4">
-                        Review picker productivity, orders picked, lines prepared, and employee performance.
+                        Review picker productivity, orders
+                        picked, lines prepared, and employee
+                        performance.
                     </p>
-                    <span class="btn btn-warning fw-bold text-dark">
+
+                    <span class="btn btn-warning
+                                 fw-bold text-dark">
                         Open Employee Stats
                     </span>
                 </div>
             </div>
         </a>
     </div>
+
+    <!-- Cycle Count Stats -->
+    <div class="col-12 col-md-6 col-xl-3">
+        <a href="{% url 'cycle_count_stats' %}"
+           class="stats-card-link">
+
+            <div class="card stats-landing-card">
+                <div class="card-body p-4 stats-card-body">
+
+                    <div class="stats-icon-circle
+                                bg-info-subtle text-info">
+                        <i class="bi bi-clipboard-check"></i>
+                    </div>
+
+                    <h3 class="h4 fw-bold mb-2">
+                        Cycle Count Stats
+                    </h3>
+
+                    <p class="text-muted mb-4">
+                        Review completed racks and the employees
+                        who counted them during each month.
+                    </p>
+
+                    <span class="btn btn-info
+                                 fw-bold text-dark">
+                        Open Cycle Count Stats
+                    </span>
+                </div>
+            </div>
+        </a>
+    </div>
+
 </div>
 {% endblock %}

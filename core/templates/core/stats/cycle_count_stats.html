@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<div class="cycle-stats-page pb-5">
+    <div class="d-flex flex-column flex-lg-row
+                justify-content-between align-items-lg-start
+                gap-3 mb-4">
+
+        <div>
+            <a href="{% url 'stats' %}"
+               class="small text-decoration-none">
+                <i class="bi bi-arrow-left me-1"></i>
+                Back to Stats
+            </a>
+
+            <h2 class="fw-bold mt-2 mb-1">
+                Cycle Count Stats
+            </h2>
+
+            <p class="text-muted mb-0">
+                See who counted each rack during
+                {{ month_label }}.
+            </p>
+        </div>
+
+        <form method="get" class="month-filter">
+            <label for="cycle-stats-month"
+                   class="form-label small fw-bold mb-1">
+                Month
+            </label>
+
+            <select id="cycle-stats-month"
+                    name="month"
+                    class="form-select fw-bold"
+                    onchange="this.form.submit()">
+
+                {% for month in month_options %}
+                    <option value="{{ month.value }}"
+                            {% if month.value == selected_month %}selected{% endif %}>
+                        {{ month.label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm
+                        stat-summary-card h-100">
+                <div class="card-body p-4">
+                    <div class="text-muted small fw-bold
+                                text-uppercase">
+                        Completed Count Sheets
+                    </div>
+
+                    <div class="display-6 fw-bold
+                                text-primary mt-2">
+                        {{ total_counts|intcomma }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm
+                        stat-summary-card h-100">
+                <div class="card-body p-4">
+                    <div class="text-muted small fw-bold
+                                text-uppercase">
+                        Employees Counting
+                    </div>
+
+                    <div class="display-6 fw-bold
+                                text-success mt-2">
+                        {{ total_employees|intcomma }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm
+                        stat-summary-card h-100">
+                <div class="card-body p-4">
+                    <div class="text-muted small fw-bold
+                                text-uppercase">
+                        Inventory Lines Counted
+                    </div>
+
+                    <div class="display-6 fw-bold text-dark mt-2">
+                        {{ total_inventory_lines|intcomma }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm stats-card mb-4">
+        <div class="card-header bg-white border-0 p-4 pb-2">
+            <h3 class="h5 fw-bold mb-1">
+                Employee Summary
+            </h3>
+
+            <div class="small text-muted">
+                Each selected employee receives credit for
+                the completed count.
+            </div>
+        </div>
+
+        <div class="card-body p-0 pt-2">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle
+                              mb-0 stats-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th class="text-end">
+                                Count Sheets
+                            </th>
+                            <th class="text-end">
+                                Inventory Lines
+                            </th>
+                            <th>Racks Counted</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for employee in employee_rows %}
+                            <tr>
+                                <td class="fw-bold">
+                                    {{ employee.employee_name }}
+                                </td>
+
+                                <td class="text-end">
+                                    {{ employee.count_sheets|intcomma }}
+                                </td>
+
+                                <td class="text-end">
+                                    {{ employee.inventory_lines|intcomma }}
+                                </td>
+
+                                <td>
+                                    {% for rack in employee.racks %}
+                                        <span class="badge rounded-pill
+                                                     text-bg-light border mb-1">
+                                            {{ rack }}
+                                        </span>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4"
+                                    class="text-center text-muted py-5">
+                                    No employee cycle-count activity
+                                    was recorded for {{ month_label }}.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm stats-card">
+        <div class="card-header bg-white border-0 p-4 pb-2">
+            <h3 class="h5 fw-bold mb-1">
+                Completed Racks
+            </h3>
+
+            <div class="small text-muted">
+                Detailed counts completed during
+                {{ month_label }}.
+            </div>
+        </div>
+
+        <div class="card-body p-0 pt-2">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle
+                              mb-0 stats-table">
+                    <thead>
+                        <tr>
+                            <th>Completed</th>
+                            <th>Rack</th>
+                            <th>Category</th>
+                            <th class="text-end">Items</th>
+                            <th>Counted By</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for count in counts %}
+                            <tr>
+                                <td class="text-nowrap">
+                                    {{ count.completed_at|date:"M j, Y g:i A" }}
+                                </td>
+
+                                <td class="fw-bold">
+                                    {{ count.rack }}
+                                </td>
+
+                                <td>
+                                    {{ count.get_category_display }}
+                                </td>
+
+                                <td class="text-end">
+                                    {{ count.item_total|intcomma }}
+                                </td>
+
+                                <td>
+                                    {% for employee in count.counter_names %}
+                                        <span class="badge rounded-pill
+                                                     text-bg-primary mb-1">
+                                            {{ employee }}
+                                        </span>
+                                    {% empty %}
+                                        <span class="text-muted">
+                                            Not recorded
+                                        </span>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5"
+                                    class="text-center text-muted py-5">
+                                    No cycle counts were completed
+                                    during {{ month_label }}.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .cycle-stats-page {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .month-filter {
+        width: min(100%, 240px);
+    }
+
+    .stats-card,
+    .stat-summary-card {
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .stats-table thead th {
+        background: #0d2c54;
+        color: white;
+        border: 0;
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}

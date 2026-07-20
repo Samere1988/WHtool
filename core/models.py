@@ -1,5 +1,7 @@
 from django.db import models
 from django.utils import timezone
+import uuid
+
 
 class CustomerList(models.Model):
     # We changed managed to True so you can edit these in the app
@@ -253,7 +255,9 @@ class TransportImportPreviousState(models.Model):
 
 class Container(models.Model):
     container_number = models.CharField(max_length=100)
-    date_received = models.DateTimeField(auto_now_add=True)
+    date_received = models.DateField(
+        default=timezone.localdate
+    )
     unloaded_by = models.CharField(max_length=100, blank=True, null=True)
     unloaded_at = models.CharField(max_length=20, blank=True, null=True)
 
@@ -271,7 +275,9 @@ class ContainerPhoto(models.Model):
 class OutboundLoad(models.Model):
     # Just a clean text field now, no choices!
     truck_name = models.CharField(max_length=100)
-    date_loaded = models.DateField(auto_now_add=True)
+    date_loaded = models.DateField(
+        default=timezone.localdate
+    )
     loaded_by = models.CharField(max_length=100, blank=True, null=True)
 
 
@@ -583,4 +589,140 @@ class HymusTransferItem(models.Model):
         return (
             f"{self.log_number} - "
             f"{self.bin_location}"
+        )
+
+
+class CycleCount(models.Model):
+    class Category(models.TextChoices):
+        SHEETS = "sheets", "Sheets"
+        LONG_PRODUCTS = (
+            "long_products",
+            "Long Products",
+        )
+
+    batch_id = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        db_index=True,
+    )
+
+    category = models.CharField(
+        max_length=30,
+        choices=Category.choices,
+    )
+
+    rack = models.CharField(
+        max_length=100,
+        db_index=True,
+    )
+
+    source_inventory_uploaded_at = models.DateTimeField(
+        blank=True,
+        null=True,
+    )
+
+    created_by = models.CharField(
+        max_length=150,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    completed_by = models.CharField(
+        max_length=150,
+        blank=True,
+    )
+
+    completed_at = models.DateTimeField(
+        blank=True,
+        null=True,
+    )
+
+    class Meta:
+        ordering = ["-created_at", "rack", "id"]
+
+    def __str__(self):
+        return (
+            f"{self.get_category_display()} - "
+            f"{self.rack} - "
+            f"{self.created_at:%Y-%m-%d}"
+        )
+
+
+class CycleCountItem(models.Model):
+    cycle_count = models.ForeignKey(
+        CycleCount,
+        related_name="items",
+        on_delete=models.CASCADE,
+    )
+
+    position = models.PositiveIntegerField(
+        default=0,
+    )
+
+    log_number = models.CharField(
+        max_length=100,
+    )
+
+    description = models.TextField(blank=True)
+
+    bin_location = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    on_hand_pieces = models.IntegerField(
+        blank=True,
+        null=True,
+    )
+
+    on_hand_weight = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        blank=True,
+        null=True,
+    )
+
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["position", "id"]
+
+    def __str__(self):
+        return (
+            f"{self.log_number} - "
+            f"{self.bin_location}"
+        )
+
+class CycleCountCounter(models.Model):
+    cycle_count = models.ForeignKey(
+        CycleCount,
+        related_name="counters",
+        on_delete=models.CASCADE,
+    )
+
+    employee_name = models.CharField(
+        max_length=100,
+        db_index=True,
+    )
+
+    class Meta:
+        ordering = ["employee_name", "id"]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "cycle_count",
+                    "employee_name",
+                ],
+                name="unique_cycle_count_counter",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.employee_name} - "
+            f"{self.cycle_count.rack}"
         )

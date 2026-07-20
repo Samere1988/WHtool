@@ -8,6 +8,8 @@ from urllib.parse import urlencode
 from copy import copy
 import os
 from types import SimpleNamespace
+from .employee_choices import WAREHOUSE_EMPLOYEES
+
 
 
 from django.conf import settings
@@ -1226,11 +1228,8 @@ def entry_form(request, customer_id):
     selected_shipping_date = get_selected_shipping_date(request)
     customer = get_object_or_404(CustomerList, customer_id=str(customer_id))
 
-    all_employees = [
-        "Ahmad", "Mikey", "Michael", "Danilio", "Kasim", "Carl",
-        "David", "Douglas", "Jean Duval", "Jean Thomas", "Cooper",
-        "Aperam", "Elvis", "Leon", "Ismail",
-    ]
+    all_employees = list(WAREHOUSE_EMPLOYEES)
+
     regions = ['Beauce', 'Drummond', 'Montreal', 'North Shore', 'Ontario', 'Quebec', 'Sherbrooke', 'South Shore']
 
     def sort_for_station(priority_names):
@@ -1369,11 +1368,7 @@ def edit_order(request, pk):
     saved_sheet = archive.sheet_prep.split(', ') if archive and archive.sheet_prep else []
     saved_cov = archive.covering_prep.split(', ') if archive and archive.covering_prep else []
 
-    all_employees = [
-        "Ahmad", "Mikey", "Michael", "Danilio", "Kasim", "Carl",
-        "David", "Douglas", "Jean Duval", "Jean Thomas", "Cooper",
-        "Aperam", "Elvis", "Leon", "Ismail",
-    ]
+    all_employees = list(WAREHOUSE_EMPLOYEES)
 
     def sort_for_station(priority_names):
         top = [name for name in priority_names if name in all_employees]
@@ -1756,6 +1751,43 @@ def finalize_run_sheet(request):
         'grouped_orders': grouped_orders,
         'shipping_date': shipping_date,
     })
+
+
+@login_required
+def order_search(request):
+    query = " ".join(
+        request.GET.get("q", "").split()
+    )
+
+    orders = []
+
+    if query:
+        orders = list(
+            RunSheet.objects.filter(
+                order_number__icontains=query,
+            ).order_by(
+                "-shipping_date",
+                "order_number",
+                "id",
+            )[:200]
+        )
+
+        for order in orders:
+            order.search_driver = (
+                order.transport_driver
+                or order.driver_name
+                or ""
+            )
+
+    return render(
+        request,
+        "core/order_search.html",
+        {
+            "query": query,
+            "orders": orders,
+        },
+    )
+
 
 @login_required
 def run_sheet_history(request):
@@ -2355,11 +2387,7 @@ def daily_pickup_detail(request, date):
 @login_required
 def add_pickup_order(request, customer_id):
     customer = get_object_or_404(CustomerList, customer_id=str(customer_id))
-    all_employees = [
-        "Ahmad", "Mikey", "Michael", "Danilio", "Kasim", "Carl",
-        "David", "Douglas", "Jean Duval", "Jean Thomas", "Cooper",
-        "Aperam", "Elvis", "Leon", "Ismail",
-    ]
+    all_employees = list(WAREHOUSE_EMPLOYEES)
 
     def sort_for_station(priority_names):
         top = [name for name in priority_names if name in all_employees]
@@ -2418,11 +2446,7 @@ def add_pickup_order(request, customer_id):
 @login_required
 def edit_pickup_order(request, pk):
     order = get_object_or_404(PickupLog, pk=pk)
-    all_employees = [
-        "Ahmad", "Mikey", "Michael", "Danilio", "Kasim", "Carl",
-        "David", "Douglas", "Jean Duval", "Jean Thomas", "Cooper",
-        "Aperam", "Elvis", "Leon", "Ismail",
-    ]
+    all_employees = list(WAREHOUSE_EMPLOYEES)
     saved_bar = [n.strip() for n in order.bar_prep.split(',')]
     saved_sheet = [n.strip() for n in order.sheet_prep.split(',')]
     saved_cov = [n.strip() for n in order.covering_prep.split(',')]

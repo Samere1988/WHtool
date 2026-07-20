@@ -16,7 +16,17 @@ urlpatterns = [
     path('stats/daily-runs/', views.daily_run_stats, name='daily_run_stats'),
     path('stats/employees/', views.employee_stats, name='employee_stats'),
     path('history/', views.run_sheet_history, name='run_sheet_history'),
+    path(
+        "orders/search/",
+        views.order_search,
+        name="order_search",
+    ),
 
+    path(
+        "stats/cycle-counts/",
+        report_views.cycle_count_stats,
+        name="cycle_count_stats",
+    ),
 
     # --- RUN SHEET ACTIONS ---
     path('add-to-run-sheet/', views.add_to_run_sheet, name='add_to_run_sheet'),
@@ -151,6 +161,36 @@ urlpatterns = [
         report_views.remove_hymus_transfer_item,
         name="remove_hymus_transfer_item",
     ),
+    # --- CYCLE COUNTS ---
+    path(
+        "reports/cycle-counts/",
+        report_views.cycle_counts,
+        name="cycle_counts",
+    ),
+    path(
+        "reports/cycle-counts/batch/"
+        "<uuid:batch_id>/print/",
+        report_views.cycle_count_batch_print,
+        name="cycle_count_batch_print",
+    ),
+    path(
+        "reports/cycle-counts/"
+        "<int:count_id>/print/",
+        report_views.cycle_count_print,
+        name="cycle_count_print",
+    ),
+    path(
+        "reports/cycle-counts/"
+        "<int:count_id>/complete/",
+        report_views.complete_cycle_count,
+        name="complete_cycle_count",
+    ),
 
+    path(
+        "reports/cycle-counts/"
+        "<int:count_id>/delete/",
+        report_views.delete_cycle_count,
+        name="delete_cycle_count",
+    ),
 
 ]

@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block container_type %}container-fluid{% endblock %}
+
+{% block content %}
+<div class="print-controls d-print-none mb-4">
+    <div>
+        <a href="{% url 'cycle_counts' %}"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>
+            Back to Cycle Counts
+        </a>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-end gap-2">
+
+        {% if is_batch %}
+            {% for count in counts %}
+                <a href="{% url 'cycle_count_print' count.id %}"
+                   class="btn btn-outline-primary"
+                   target="_blank">
+                    <i class="bi bi-printer me-1"></i>
+                    Print {{ count.rack }}
+                </a>
+            {% endfor %}
+        {% endif %}
+
+        <button type="button"
+                class="btn btn-primary fw-bold px-4"
+                onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>
+
+            {% if is_batch %}
+                Print All Selected
+            {% else %}
+                Print
+            {% endif %}
+        </button>
+    </div>
+</div>
+<div class="cycle-print-document">
+    {% for count in counts %}
+        <section class="cycle-sheet">
+            <header class="sheet-header">
+                <div>
+                    <h1>Cycle Count</h1>
+                    <div class="sheet-subtitle">
+                        {{ count.get_category_display }}
+                        &middot;
+                        Rack {{ count.rack }}
+                    </div>
+                </div>
+
+                <div class="sheet-meta">
+                    <div>
+                        <strong>Created:</strong>
+                        {{ count.created_at|date:"M j, Y" }}
+                    </div>
+                    <div>
+                        <strong>Created by:</strong>
+                        {{ count.created_by|default:"—" }}
+                    </div>
+                    <div>
+                        <strong>Status:</strong>
+                        {% if count.completed_at %}
+                            Completed
+                        {% else %}
+                            Open
+                        {% endif %}
+                    </div>
+                </div>
+            </header>
+
+            <table class="cycle-table">
+                <colgroup>
+                    <col class="col-log">
+                    <col class="col-description">
+                    <col class="col-bin">
+                    <col class="col-pcs">
+                    <col class="col-lbs">
+                    <col class="col-notes">
+                </colgroup>
+
+                <thead>
+                    <tr>
+                        <th>Log</th>
+                        <th>Description</th>
+                        <th>Bin</th>
+                        <th class="number-cell">PCS</th>
+                        <th class="number-cell">LBS</th>
+                        <th>Count</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for item in count.items.all %}
+                        <tr>
+                            <td class="log-cell">
+                                {{ item.log_number }}
+                            </td>
+                            <td class="description-cell">
+                                {{ item.description }}
+                            </td>
+                            <td class="bin-cell">
+                                {{ item.bin_location }}
+                            </td>
+                            <td class="number-cell">
+                                {{ item.on_hand_pieces|default_if_none:""|intcomma }}
+                            </td>
+                            <td class="number-cell">
+                                {{ item.on_hand_weight|default_if_none:""|floatformat:"-2"|intcomma }}
+                            </td>
+                            <td class="count-entry"</td>
+                            <td class="notes-cell">&nbsp;</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="empty-cell">
+                                No inventory was saved for this rack.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <footer class="sheet-footer">
+                <div>
+                    Counted by:
+                    <span class="signature-line"></span>
+                </div>
+                <div>
+                    Date:
+                    <span class="date-line"></span>
+                </div>
+            </footer>
+        </section>
+    {% endfor %}
+</div>
+
+<style>
+    @page {
+        size: landscape;
+        margin: 0.35in;
+    }
+
+    .print-controls {
+        max-width: 1400px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .cycle-print-document {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .cycle-sheet {
+        color: #000;
+        background: #fff;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    .cycle-sheet:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+    .sheet-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 1rem;
+        padding-bottom: 0.12in;
+        border-bottom: 3px solid #0d2c54;
+        margin-bottom: 0.12in;
+    }
+
+    .sheet-header h1 {
+        margin: 0;
+        font-size: 22pt;
+        line-height: 1;
+        font-weight: 800;
+    }
+
+    .sheet-subtitle {
+        margin-top: 0.06in;
+        font-size: 13pt;
+        font-weight: 700;
+        color: #0d2c54;
+    }
+
+    .sheet-meta {
+        min-width: 2.6in;
+        font-size: 9pt;
+        line-height: 1.45;
+    }
+
+    .cycle-table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        font-size: 8.5pt;
+    }
+
+    .cycle-table thead {
+        display: table-header-group;
+    }
+
+    .cycle-table th {
+        padding: 0.07in 0.06in;
+        border: 1px solid #000;
+        background: #0d2c54 !important;
+        color: #fff !important;
+        font-weight: 800;
+        text-transform: uppercase;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .cycle-table td {
+        min-height: 0.3in;
+        padding: 0.06in;
+        border: 1px solid #000;
+        vertical-align: middle;
+        line-height: 1.15;
+    }
+
+    .cycle-table tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .col-log {
+        width: 11%;
+    }
+
+    .col-description {
+        width: 32%;
+    }
+
+    .col-bin {
+        width: 10%;
+    }
+
+    .col-pcs {
+        width: 7%;
+    }
+
+    .col-lbs {
+        width: 9%;
+    }
+
+    .col-count {
+        width: 10%;
+    }
+
+    .col-notes {
+        width: 21%;
+    }
+    .count-entry,
+    .notes-cell {
+        height: 0.34in;
+    }
+    .log-cell,
+    .bin-cell {
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .number-cell {
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .notes-cell {
+        height: 0.34in;
+    }
+
+    .empty-cell {
+        text-align: center;
+        padding: 0.5in !important;
+    }
+
+    .sheet-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5in;
+        margin-top: 0.15in;
+        font-size: 9pt;
+        font-weight: 700;
+    }
+
+    .signature-line,
+    .date-line {
+        display: inline-block;
+        width: 2.4in;
+        border-bottom: 1px solid #000;
+        margin-left: 0.08in;
+    }
+
+    .date-line {
+        width: 1.5in;
+    }
+
+    @media print {
+        body {
+            background: #fff !important;
+        }
+
+        nav,
+        .navbar,
+        .print-controls {
+            display: none !important;
+        }
+
+        .container-fluid {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .cycle-print-document {
+            width: 100%;
+            max-width: none;
+            margin: 0;
+        }
+    }
+</style>
+{% endblock %}

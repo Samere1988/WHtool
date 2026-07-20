@@ -1,0 +1,636 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<div class="cycle-count-page pb-5">
+    <div class="d-flex flex-column flex-lg-row
+                justify-content-between align-items-lg-start
+                gap-3 mb-4">
+        <div>
+            <a href="{% url 'reports' %}"
+               class="small text-decoration-none">
+                <i class="bi bi-arrow-left me-1"></i>
+                Back to Inventory Report
+            </a>
+
+            <h2 class="fw-bold mt-2 mb-1">
+                Cycle Counts
+            </h2>
+
+            {% if current_report %}
+                <p class="text-muted mb-0">
+                    Current inventory uploaded
+                    {{ current_report.uploaded_at|date:"M j, Y g:i A" }}.
+                </p>
+            {% else %}
+                <p class="text-danger mb-0">
+                    Upload the Inventory Report before creating a count.
+                </p>
+            {% endif %}
+        </div>
+
+        <a href="#count-history"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-clock-history me-1"></i>
+            Count History
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags|default:'info' }}{% endif %}"
+                 role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" id="cycle-count-form">
+        {% csrf_token %}
+
+        <div class="row g-4">
+            <div class="col-12 col-xl-6">
+                <div class="card border-0 shadow-sm count-card h-100">
+                    <div class="card-header bg-white border-0 p-4 pb-2">
+                        <div class="d-flex justify-content-between
+                                    align-items-center gap-3">
+                            <div>
+                                <h3 class="h5 fw-bold mb-1">
+                                    Sheets
+                                </h3>
+                                <div class="small text-muted">
+                                    {{ sheet_racks|length }} racks available
+                                </div>
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary
+                                           select-category"
+                                    data-category="sheets">
+                                Select All
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body p-4 pt-3">
+                        <div class="rack-grid">
+                            {% for rack in sheet_racks %}
+                                <label class="rack-option">
+                                    <input type="checkbox"
+                                           class="form-check-input rack-checkbox
+                                                  rack-sheets"
+                                           name="racks"
+                                           value="{{ rack.token }}">
+
+                                    <span class="rack-details">
+                                        <span class="d-flex align-items-center
+                                                     justify-content-between
+                                                     gap-2">
+                                            <strong>{{ rack.rack }}</strong>
+
+                                            {% if rack.open_count %}
+                                                <span class="badge text-bg-warning">
+                                                    Open
+                                                </span>
+                                            {% endif %}
+                                        </span>
+
+                                        <span class="small text-muted d-block">
+                                            {{ rack.item_count|intcomma }}
+                                            item{{ rack.item_count|pluralize }}
+                                        </span>
+
+                                        <span class="rack-last-count small d-block">
+                                            {% if rack.last_completed_at %}
+                                                Last counted
+                                                {{ rack.last_completed_at|date:"M j, Y" }}
+                                            {% else %}
+                                                Never counted
+                                            {% endif %}
+                                        </span>
+                                    </span>
+                                </label>
+                            {% empty %}
+                                <div class="text-muted py-4 text-center">
+                                    No sheet racks are available.
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-6">
+                <div class="card border-0 shadow-sm count-card h-100">
+                    <div class="card-header bg-white border-0 p-4 pb-2">
+                        <div class="d-flex justify-content-between
+                                    align-items-center gap-3">
+                            <div>
+                                <h3 class="h5 fw-bold mb-1">
+                                    Long Products
+                                </h3>
+                                <div class="small text-muted">
+                                    {{ long_product_racks|length }} racks available
+                                </div>
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary
+                                           select-category"
+                                    data-category="long-products">
+                                Select All
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body p-4 pt-3">
+                        <div class="rack-grid">
+                            {% for rack in long_product_racks %}
+                                <label class="rack-option">
+                                    <input type="checkbox"
+                                           class="form-check-input rack-checkbox
+                                                  rack-long-products"
+                                           name="racks"
+                                           value="{{ rack.token }}">
+
+                                    <span class="rack-details">
+                                        <span class="d-flex align-items-center
+                                                     justify-content-between
+                                                     gap-2">
+                                            <strong>{{ rack.rack }}</strong>
+
+                                            {% if rack.open_count %}
+                                                <span class="badge text-bg-warning">
+                                                    Open
+                                                </span>
+                                            {% endif %}
+                                        </span>
+
+                                        <span class="small text-muted d-block">
+                                            {{ rack.item_count|intcomma }}
+                                            item{{ rack.item_count|pluralize }}
+                                        </span>
+
+                                        <span class="rack-last-count small d-block">
+                                            {% if rack.last_completed_at %}
+                                                Last counted
+                                                {{ rack.last_completed_at|date:"M j, Y" }}
+                                            {% else %}
+                                                Never counted
+                                            {% endif %}
+                                        </span>
+                                    </span>
+                                </label>
+                            {% empty %}
+                                <div class="text-muted py-4 text-center">
+                                    No long-product racks are available.
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sticky-create-bar shadow-lg mt-4">
+            <div>
+                <strong id="selected-count">0</strong>
+                rack<span id="selected-plural">s</span> selected
+            </div>
+
+            <button type="submit"
+                    class="btn btn-primary fw-bold px-4"
+                    id="create-count-button"
+                    {% if not current_report %}disabled{% endif %}>
+                <i class="bi bi-printer me-1"></i>
+                Create Count Sheets
+            </button>
+        </div>
+    </form>
+
+    <div class="card border-0 shadow-sm count-card mt-5"
+         id="count-history">
+        <div class="card-header bg-white border-0 p-4 pb-2">
+            <h3 class="h5 fw-bold mb-1">
+                Cycle-Count History
+            </h3>
+            <div class="small text-muted">
+                Saved count sheets remain available after inventory is replaced.
+            </div>
+        </div>
+
+        <div class="card-body p-0 pt-2">
+            {% if history %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 history-table">
+                        <thead>
+                            <tr>
+                                <th>Rack</th>
+                                <th>Category</th>
+                                <th>Created</th>
+                                <th>Created By</th>
+                                <th class="text-end">Items</th>
+                                <th>Status</th>
+                                <th>Completed</th>
+                                <th>Counted by</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for count in history %}
+                                <tr>
+                                    <td class="fw-bold">
+                                        {{ count.rack }}
+                                    </td>
+                                    <td>
+                                        {{ count.get_category_display }}
+                                    </td>
+                                    <td class="text-nowrap">
+                                        {{ count.created_at|date:"M j, Y g:i A" }}
+                                    </td>
+                                    <td>
+                                        {{ count.created_by|default:"—" }}
+                                    </td>
+                                    <td class="text-end">
+                                        {{ count.item_total|intcomma }}
+                                    </td>
+                                    <td class="text-nowrap">
+                                        {% if count.completed_at %}
+                                            {{ count.completed_at|date:"M j, Y" }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if count.completed_at %}
+                                            {% for counter in count.counters.all %}
+                                                <span class="badge rounded-pill
+                                                             text-bg-primary mb-1">
+                                                    {{ counter.employee_name }}
+                                                </span>
+                                            {% empty %}
+                                                <span class="text-muted">
+                                                    Not recorded
+                                                </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-nowrap">
+                                        {% if count.completed_at %}
+                                            {{ count.completed_at|date:"M j, Y" }}
+                                            {% if count.completed_by %}
+                                                <span class="small text-muted d-block">
+                                                    {{ count.completed_by }}
+                                                </span>
+                                            {% endif %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <a href="{% url 'cycle_count_print' count.id %}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-printer"></i>
+                                            Print
+                                        </a>
+
+                                        {% if not count.completed_at %}
+                                            <button type="button"
+                                                    class="btn btn-sm btn-success
+                                                           complete-count-button"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#completeCycleCountModal"
+                                                    data-complete-url="{% url 'complete_cycle_count' count.id %}"
+                                                    data-rack="{{ count.rack }}">
+                                                <i class="bi bi-check-lg"></i>
+                                                Complete
+                                            </button>
+
+                                            <form method="post"
+                                                  action="{% url 'delete_cycle_count' count.id %}"
+                                                  class="d-inline"
+                                                  onsubmit="return confirm('Delete the open cycle count for rack {{ count.rack }}?');">
+                                                {% csrf_token %}
+
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-clipboard-check fs-1 d-block mb-2"></i>
+                    No cycle counts have been created yet.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<div class="modal fade"
+     id="completeCycleCountModal"
+     tabindex="-1"
+     aria-labelledby="completeCycleCountModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow">
+
+            <form method="post"
+                  id="complete-cycle-count-form">
+
+                {% csrf_token %}
+
+                <div class="modal-header border-0 pb-2">
+                    <div>
+                        <h2 class="modal-title h5 fw-bold"
+                            id="completeCycleCountModalLabel">
+                            Complete Cycle Count
+                        </h2>
+
+                        <div class="text-muted small">
+                            Rack
+                            <strong id="complete-rack-name"></strong>
+                        </div>
+                    </div>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close">
+                    </button>
+                </div>
+
+                <div class="modal-body pt-2">
+                    <label class="form-label fw-bold mb-3">
+                        Who completed this count?
+                    </label>
+
+                    <div class="counter-grid">
+                        {% for employee in employees %}
+                            <input type="checkbox"
+                                   class="btn-check counter-checkbox"
+                                   name="counters"
+                                   id="cycle-counter-{{ forloop.counter }}"
+                                   value="{{ employee }}"
+                                   autocomplete="off">
+
+                            <label class="btn btn-outline-primary
+                                          counter-choice"
+                                   for="cycle-counter-{{ forloop.counter }}">
+                                <i class="bi bi-person me-1"></i>
+                                {{ employee }}
+                            </label>
+                        {% endfor %}
+                    </div>
+
+                    <div class="text-danger small mt-3 d-none"
+                         id="counter-selection-error">
+                        Select at least one employee.
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 pt-2">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-success fw-bold px-4">
+                        <i class="bi bi-check-lg me-1"></i>
+                        Mark Completed
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<style>
+    .cycle-count-page {
+        max-width: 1500px;
+        margin: 0 auto;
+    }
+
+    .count-card {
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .rack-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+        max-height: 620px;
+        overflow-y: auto;
+        padding: 0.15rem;
+    }
+
+    .rack-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.9rem;
+        border: 1px solid #dbe3ee;
+        border-radius: 12px;
+        background: #fff;
+        cursor: pointer;
+        transition: 0.15s ease;
+    }
+
+    .rack-option:hover {
+        border-color: #0d6efd;
+        background: #f6f9ff;
+    }
+
+    .rack-option:has(.rack-checkbox:checked) {
+        border-color: #0d6efd;
+        background: #edf4ff;
+        box-shadow: 0 0 0 1px #0d6efd;
+    }
+
+    .rack-checkbox {
+        margin-top: 0.25rem;
+        flex: 0 0 auto;
+    }
+
+    .rack-details {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .rack-last-count {
+        color: #52647a;
+        margin-top: 0.25rem;
+    }
+
+    .sticky-create-bar {
+        position: sticky;
+        bottom: 1rem;
+        z-index: 20;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        border: 1px solid #d8e1ec;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(8px);
+    }
+
+    .history-table thead th {
+        background: #0d2c54;
+        color: white;
+        border: 0;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 767px) {
+        .rack-grid {
+            grid-template-columns: 1fr;
+            max-height: none;
+        }
+
+        .sticky-create-bar {
+            bottom: 0.5rem;
+        }
+    }
+    .counter-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+    }
+
+    .counter-choice {
+        text-align: left;
+        font-weight: 700;
+        padding: 0.75rem 0.9rem;
+    }
+
+    @media (max-width: 767px) {
+        .counter-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+</style>
+
+<script>
+    (() => {
+        const checkboxes = Array.from(
+            document.querySelectorAll(".rack-checkbox")
+        );
+
+        const selectedCount = document.getElementById(
+            "selected-count"
+        );
+
+        const selectedPlural = document.getElementById(
+            "selected-plural"
+        );
+
+        const createButton = document.getElementById(
+            "create-count-button"
+        );
+
+        const hasInventory = {{ current_report|yesno:"true,false" }};
+        const completeForm = document.getElementById(
+    "complete-cycle-count-form"
+        );
+
+        const completeRackName = document.getElementById(
+            "complete-rack-name"
+        );
+
+        const counterError = document.getElementById(
+            "counter-selection-error"
+        );
+
+        document.querySelectorAll(".complete-count-button")
+            .forEach((button) => {
+                button.addEventListener("click", () => {
+                    completeForm.action =
+                        button.dataset.completeUrl;
+
+                    completeRackName.textContent =
+                        button.dataset.rack;
+
+                    completeForm
+                        .querySelectorAll(".counter-checkbox")
+                        .forEach((checkbox) => {
+                            checkbox.checked = false;
+                        });
+
+                    counterError.classList.add("d-none");
+                });
+            });
+
+        completeForm.addEventListener("submit", (event) => {
+            const employeeSelected = Array.from(
+                completeForm.querySelectorAll(
+                    ".counter-checkbox"
+                )
+            ).some((checkbox) => checkbox.checked);
+
+            if (!employeeSelected) {
+                event.preventDefault();
+                counterError.classList.remove("d-none");
+            }
+        });
+        function updateSelection() {
+            const count = checkboxes.filter(
+                checkbox => checkbox.checked
+            ).length;
+
+            selectedCount.textContent = count;
+            selectedPlural.textContent = count === 1 ? "" : "s";
+
+            if (createButton) {
+                createButton.disabled = !hasInventory || count === 0;
+            }
+        }
+
+        checkboxes.forEach((checkbox) => {
+            checkbox.addEventListener("change", updateSelection);
+        });
+
+        document.querySelectorAll(".select-category")
+            .forEach((button) => {
+                button.addEventListener("click", () => {
+                    const category = button.dataset.category;
+                    const categoryBoxes = Array.from(
+                        document.querySelectorAll(`.rack-${category}`)
+                    );
+
+                    const shouldSelect = categoryBoxes.some(
+                        checkbox => !checkbox.checked
+                    );
+
+                    categoryBoxes.forEach((checkbox) => {
+                        checkbox.checked = shouldSelect;
+                    });
+
+                    button.textContent = shouldSelect
+                        ? "Clear All"
+                        : "Select All";
+
+                    updateSelection();
+                });
+            });
+
+        updateSelection();
+    })();
+</script>
+{% endblock %}

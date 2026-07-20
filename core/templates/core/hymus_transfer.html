@@ -15,7 +15,6 @@ container-fluid px-3 px-xl-4
         <div>
             <a href="{% url 'reports' %}"
                class="small text-decoration-none">
-
                 <i class="bi bi-arrow-left me-1"></i>
                 Back to Inventory Report
             </a>
@@ -30,12 +29,10 @@ container-fluid px-3 px-xl-4
         </div>
 
         <div class="d-flex flex-wrap gap-2">
-
             <button class="btn btn-outline-primary
                            print-document-button"
                     type="button"
                     data-document="sheets"
-                    data-row-count="{{ sheet_count }}"
                     {% if not sheet_items %}disabled{% endif %}>
 
                 <i class="bi bi-printer me-2"></i>
@@ -46,7 +43,6 @@ container-fluid px-3 px-xl-4
                            print-document-button"
                     type="button"
                     data-document="bundles"
-                    data-row-count="{{ bundle_count }}"
                     {% if not bundle_items %}disabled{% endif %}>
 
                 <i class="bi bi-printer me-2"></i>
@@ -67,7 +63,6 @@ container-fluid px-3 px-xl-4
 
     {% if messages %}
         {% for message in messages %}
-
             <div class="alert
                         alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %}
                         alert-dismissible fade show no-print"
@@ -77,18 +72,18 @@ container-fluid px-3 px-xl-4
 
                 <button type="button"
                         class="btn-close"
-                        data-bs-dismiss="alert">
+                        data-bs-dismiss="alert"
+                        aria-label="Close">
                 </button>
             </div>
-
         {% endfor %}
     {% endif %}
 
+    <!-- Search and manual entry -->
     <div class="card border-0 shadow-sm
                 transfer-card mb-4 no-print">
 
         <div class="card-body p-4">
-
             <h3 class="h5 fw-bold mb-1">
                 Find an inventory log
             </h3>
@@ -99,14 +94,12 @@ container-fluid px-3 px-xl-4
             </p>
 
             {% if current_report %}
-
                 <label for="inventory-log-search"
                        class="form-label fw-semibold">
                     Log number
                 </label>
 
                 <div class="input-group search-box">
-
                     <span class="input-group-text bg-white">
                         <i class="bi bi-search"></i>
                     </span>
@@ -122,7 +115,6 @@ container-fluid px-3 px-xl-4
 
                 <div id="search-status"
                      class="small text-muted mt-2">
-
                     Start typing to search the current inventory.
                 </div>
 
@@ -141,7 +133,6 @@ container-fluid px-3 px-xl-4
                             class="btn btn-sm
                                    btn-outline-primary ms-2"
                             id="show-manual-entry">
-
                         Add this log manually
                     </button>
                 </div>
@@ -162,16 +153,13 @@ container-fluid px-3 px-xl-4
                 </form>
 
             {% else %}
-
                 <div class="alert alert-warning">
                     There is no saved Inventory Report to
                     search. You can add a log manually below.
                 </div>
-
             {% endif %}
 
             <div class="mt-3">
-
                 <button type="button"
                         class="btn btn-link px-0
                                text-decoration-none"
@@ -202,9 +190,7 @@ container-fluid px-3 px-xl-4
                                value="add_manual">
 
                         <div class="row g-3">
-
                             <div class="col-12 col-md-3">
-
                                 <label for="manual-log-number"
                                        class="form-label fw-semibold">
                                     Log number
@@ -219,7 +205,6 @@ container-fluid px-3 px-xl-4
                             </div>
 
                             <div class="col-12 col-md-6">
-
                                 <label for="manual-description"
                                        class="form-label fw-semibold">
                                     Description
@@ -233,7 +218,6 @@ container-fluid px-3 px-xl-4
                             </div>
 
                             <div class="col-12 col-md-3">
-
                                 <label for="manual-bin-location"
                                        class="form-label fw-semibold">
                                     Location
@@ -248,21 +232,16 @@ container-fluid px-3 px-xl-4
                         </div>
 
                         <div class="d-flex gap-2 mt-3">
-
                             <button type="submit"
                                     class="btn btn-primary">
 
-                                <i class="bi
-                                          bi-plus-circle me-2"></i>
-
+                                <i class="bi bi-plus-circle me-2"></i>
                                 Add manual log
                             </button>
 
                             <button type="button"
-                                    class="btn
-                                           btn-outline-secondary"
+                                    class="btn btn-outline-secondary"
                                     id="cancel-manual-entry">
-
                                 Cancel
                             </button>
                         </div>
@@ -274,28 +253,13 @@ container-fluid px-3 px-xl-4
 
     {% for document in transfer_documents %}
 
-        <section class="transfer-document mb-4"
-                 data-print-document="{{ document.key }}">
-
-            <div class="print-heading">
-
-                <h1>
-                    {{ document.title }}
-                </h1>
-
-                <div>
-                    Printed
-                    {{ printed_on|date:"M j, Y g:i A" }}
-                </div>
-            </div>
-
+        <!-- On-screen editable report -->
+        <section class="screen-transfer-document mb-4 no-print">
             <div class="card border-0 shadow-sm
                         transfer-card transfer-sheet">
 
                 <div class="card-body p-0">
-
-                    <div class="p-4 border-bottom no-print">
-
+                    <div class="p-4 border-bottom">
                         <h3 class="h5 fw-bold mb-1">
                             {{ document.title }}
                         </h3>
@@ -311,9 +275,7 @@ container-fluid px-3 px-xl-4
                     </div>
 
                     {% if document.items %}
-
                         <div class="table-responsive">
-
                             <table class="table transfer-table
                                           align-middle mb-0">
 
@@ -323,8 +285,7 @@ container-fluid px-3 px-xl-4
                                         <th>Description</th>
                                         <th>Location</th>
                                         <th>Notes</th>
-
-                                        <th class="text-end no-print">
+                                        <th class="text-end">
                                             Actions
                                         </th>
                                     </tr>
@@ -332,9 +293,7 @@ container-fluid px-3 px-xl-4
 
                                 <tbody>
                                     {% for item in document.items %}
-
                                         <tr id="transfer-{{ item.id }}">
-
                                             <td class="fw-bold text-nowrap">
                                                 {{ item.log_number }}
                                             </td>
@@ -348,10 +307,9 @@ container-fluid px-3 px-xl-4
                                             </td>
 
                                             <td class="transfer-notes">
-
                                                 <form method="post"
                                                       action="{% url 'update_hymus_transfer_note' item.id %}"
-                                                      class="note-form no-print">
+                                                      class="note-form">
 
                                                     {% csrf_token %}
 
@@ -366,21 +324,13 @@ container-fluid px-3 px-xl-4
                                                                    btn-outline-primary
                                                                    mt-2">
 
-                                                        <i class="bi
-                                                                  bi-check2 me-1">
-                                                        </i>
-
+                                                        <i class="bi bi-check2 me-1"></i>
                                                         Save note
                                                     </button>
                                                 </form>
-
-                                                <div class="note-print">
-                                                    {{ item.notes|linebreaksbr }}
-                                                </div>
                                             </td>
 
-                                            <td class="text-end no-print">
-
+                                            <td class="text-end">
                                                 <form method="post"
                                                       action="{% url 'remove_hymus_transfer_item' item.id %}"
                                                       onsubmit="return confirm('Remove log {{ item.log_number|escapejs }} from the transfer?');">
@@ -401,28 +351,89 @@ container-fluid px-3 px-xl-4
                                                 </form>
                                             </td>
                                         </tr>
-
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
 
                     {% else %}
-
                         <div class="text-center py-4 px-3
-                                    empty-transfer no-print">
-
+                                    empty-transfer">
                             No {{ document.key }} have been added.
                         </div>
-
                     {% endif %}
                 </div>
             </div>
         </section>
 
+        <!-- Printed report: maximum 15 rows per page -->
+        {% if document.pages %}
+            <section class="transfer-document print-only"
+                     data-print-document="{{ document.key }}">
+
+                {% for page_items in document.pages %}
+                    <article class="transfer-print-page">
+                        <div class="print-heading">
+                            <h1>
+                                {{ document.title }}
+                            </h1>
+
+                            <div class="text-end">
+                                <div>
+                                    Page {{ forloop.counter }}
+                                    of {{ document.page_count }}
+                                </div>
+
+                                <div>
+                                    Printed
+                                    {{ printed_on|date:"M j, Y g:i A" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <table class="table transfer-table
+                                      print-transfer-table mb-0">
+
+                            <thead>
+                                <tr>
+                                    <th>Log</th>
+                                    <th>Description</th>
+                                    <th>Location</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for item in page_items %}
+                                    <tr>
+                                        <td class="text-nowrap">
+                                            {{ item.log_number }}
+                                        </td>
+
+                                        <td>
+                                            {{ item.description }}
+                                        </td>
+
+                                        <td class="text-nowrap">
+                                            {{ item.bin_location }}
+                                        </td>
+
+                                        <td class="print-note-cell">
+                                            {{ item.notes|linebreaksbr }}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </article>
+                {% endfor %}
+            </section>
+        {% endif %}
+
     {% endfor %}
 </div>
 
+<!-- Clear transfer modal -->
 <div class="modal fade no-print"
      id="clear-transfer-modal"
      tabindex="-1"
@@ -430,20 +441,17 @@ container-fluid px-3 px-xl-4
      aria-hidden="true">
 
     <div class="modal-dialog modal-dialog-centered">
-
         <div class="modal-content border-0 shadow">
-
             <div class="modal-header">
-
                 <h2 class="modal-title fs-5"
                     id="clear-transfer-title">
-
                     Clear 26 Hymus Transfer?
                 </h2>
 
                 <button type="button"
                         class="btn-close"
-                        data-bs-dismiss="modal">
+                        data-bs-dismiss="modal"
+                        aria-label="Close">
                 </button>
             </div>
 
@@ -456,11 +464,9 @@ container-fluid px-3 px-xl-4
             </div>
 
             <div class="modal-footer">
-
                 <button type="button"
                         class="btn btn-outline-secondary"
                         data-bs-dismiss="modal">
-
                     Cancel
                 </button>
 
@@ -475,7 +481,6 @@ container-fluid px-3 px-xl-4
 
                     <button type="submit"
                             class="btn btn-danger">
-
                         Clear entire transfer
                     </button>
                 </form>
@@ -512,13 +517,11 @@ container-fluid px-3 px-xl-4
     .inventory-result {
         width: 100%;
         display: grid;
-
         grid-template-columns:
             minmax(120px, 0.7fr)
             minmax(280px, 2fr)
             minmax(120px, 0.7fr)
             auto;
-
         gap: 1rem;
         align-items: center;
         padding: 0.85rem 1rem;
@@ -595,7 +598,7 @@ container-fluid px-3 px-xl-4
         resize: vertical;
     }
 
-    .note-print,
+    .print-only,
     .print-heading {
         display: none;
     }
@@ -620,8 +623,8 @@ container-fluid px-3 px-xl-4
         html,
         body {
             background: white !important;
-            font-size:
-                var(--print-font-size, 8pt);
+            font-size: 10pt !important;
+            font-weight: 700 !important;
         }
 
         .navbar,
@@ -646,9 +649,23 @@ container-fluid px-3 px-xl-4
         body.print-bundles
         .transfer-document[data-print-document="bundles"] {
             display: block !important;
+        }
 
-            zoom:
-                var(--print-zoom, 1);
+        body.print-sheets
+        .transfer-document[data-print-document="sheets"] *,
+        body.print-bundles
+        .transfer-document[data-print-document="bundles"] * {
+            font-weight: 700 !important;
+        }
+
+        .transfer-print-page {
+            break-after: page;
+            page-break-after: always;
+        }
+
+        .transfer-print-page:last-child {
+            break-after: auto;
+            page-break-after: auto;
         }
 
         .print-heading {
@@ -662,18 +679,8 @@ container-fluid px-3 px-xl-4
 
         .print-heading h1 {
             margin: 0;
-            font-size: 16pt;
-        }
-
-        .transfer-card {
-            box-shadow: none !important;
-            border: 0 !important;
-            border-radius: 0;
-            overflow: visible;
-        }
-
-        .table-responsive {
-            overflow: visible !important;
+            font-size: 18pt;
+            font-weight: 700;
         }
 
         .transfer-table {
@@ -681,6 +688,8 @@ container-fluid px-3 px-xl-4
             table-layout: fixed;
             border-collapse: collapse;
             margin: 0 !important;
+            font-size: 10pt;
+            font-weight: 700;
         }
 
         .transfer-table thead {
@@ -689,26 +698,26 @@ container-fluid px-3 px-xl-4
 
         .transfer-table tr {
             break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .transfer-table thead th {
             background: #dce6f1 !important;
             color: #000 !important;
             border: 1px solid #555;
-            padding: 2px 4px;
-            line-height: 1.05;
+            padding: 5px 6px;
+            line-height: 1.15;
+            font-weight: 700;
         }
 
         .transfer-table tbody td {
+            height: 0.32in;
             border: 1px solid #777;
-
-            padding:
-                var(--print-cell-padding, 2px)
-                4px;
-
-            line-height: 1.05;
+            padding: 5px 6px;
+            line-height: 1.18;
             vertical-align: top;
             overflow-wrap: anywhere;
+            font-weight: 700;
         }
 
         .transfer-table th:nth-child(1),
@@ -731,16 +740,7 @@ container-fluid px-3 px-xl-4
             width: 28%;
         }
 
-        .transfer-description,
-        .transfer-notes {
-            min-width: 0;
-            max-width: none;
-            width: auto;
-        }
-
-        .note-print {
-            display: block;
-            min-height: 0.16in;
+        .print-note-cell {
             white-space: pre-wrap;
         }
     }
@@ -748,78 +748,63 @@ container-fluid px-3 px-xl-4
 
 <script>
     (() => {
-        const searchInput =
-            document.getElementById(
-                "inventory-log-search"
-            );
+        const searchInput = document.getElementById(
+            "inventory-log-search"
+        );
 
-        const resultsContainer =
-            document.getElementById(
-                "inventory-search-results"
-            );
+        const resultsContainer = document.getElementById(
+            "inventory-search-results"
+        );
 
-        const searchStatus =
-            document.getElementById(
-                "search-status"
-            );
+        const searchStatus = document.getElementById(
+            "search-status"
+        );
 
-        const manualPrompt =
-            document.getElementById(
-                "manual-prompt"
-            );
+        const manualPrompt = document.getElementById(
+            "manual-prompt"
+        );
 
-        const addForm =
-            document.getElementById(
-                "inventory-add-form"
-            );
+        const addForm = document.getElementById(
+            "inventory-add-form"
+        );
 
-        const itemIdInput =
-            document.getElementById(
-                "inventory-item-id"
-            );
+        const itemIdInput = document.getElementById(
+            "inventory-item-id"
+        );
 
-        const manualPanel =
-            document.getElementById(
-                "manual-entry-panel"
-            );
+        const manualPanel = document.getElementById(
+            "manual-entry-panel"
+        );
 
-        const manualLogInput =
-            document.getElementById(
-                "manual-log-number"
-            );
+        const manualLogInput = document.getElementById(
+            "manual-log-number"
+        );
 
-        const toggleManualButton =
-            document.getElementById(
-                "toggle-manual-entry"
-            );
+        const toggleManualButton = document.getElementById(
+            "toggle-manual-entry"
+        );
 
-        const showManualButton =
-            document.getElementById(
-                "show-manual-entry"
-            );
+        const showManualButton = document.getElementById(
+            "show-manual-entry"
+        );
 
-        const cancelManualButton =
-            document.getElementById(
-                "cancel-manual-entry"
-            );
+        const cancelManualButton = document.getElementById(
+            "cancel-manual-entry"
+        );
+
+        const originalDocumentTitle = document.title;
 
         let searchTimer = null;
         let activeRequest = null;
 
-        const originalDocumentTitle =
-            document.title;
-
         function openManualEntry() {
-            manualPanel.classList.remove(
-                "d-none"
-            );
+            manualPanel.classList.remove("d-none");
 
             if (
                 searchInput
                 && !manualLogInput.value
             ) {
-                manualLogInput.value =
-                    searchInput.value
+                manualLogInput.value = searchInput.value
                     .trim()
                     .toUpperCase();
             }
@@ -828,9 +813,7 @@ container-fluid px-3 px-xl-4
         }
 
         function closeManualEntry() {
-            manualPanel.classList.add(
-                "d-none"
-            );
+            manualPanel.classList.add("d-none");
         }
 
         toggleManualButton.addEventListener(
@@ -855,10 +838,9 @@ container-fluid px-3 px-xl-4
             className,
             value
         ) {
-            const element =
-                document.createElement(
-                    "span"
-                );
+            const element = document.createElement(
+                "span"
+            );
 
             element.className = className;
             element.textContent = value || "—";
@@ -893,18 +875,13 @@ container-fluid px-3 px-xl-4
                 + "Click one to add it.";
 
             results.forEach((result) => {
-                const button =
-                    document.createElement(
-                        "button"
-                    );
+                const button = document.createElement(
+                    "button"
+                );
 
                 button.type = "button";
-
-                button.className =
-                    "inventory-result";
-
-                button.disabled =
-                    result.already_added;
+                button.className = "inventory-result";
+                button.disabled = result.already_added;
 
                 addResultText(
                     button,
@@ -936,15 +913,13 @@ container-fluid px-3 px-xl-4
                     button.addEventListener(
                         "click",
                         () => {
-                            itemIdInput.value =
-                                result.id;
+                            itemIdInput.value = result.id;
 
                             button.disabled = true;
 
                             button.querySelector(
                                 ".result-action"
-                            ).textContent =
-                                "Adding...";
+                            ).textContent = "Adding...";
 
                             addForm.submit();
                         }
@@ -958,12 +933,10 @@ container-fluid px-3 px-xl-4
         }
 
         async function searchInventory() {
-            const query =
-                searchInput.value.trim();
+            const query = searchInput.value.trim();
 
             if (!query) {
-                resultsContainer
-                    .replaceChildren();
+                resultsContainer.replaceChildren();
 
                 manualPrompt.classList.add(
                     "d-none"
@@ -980,8 +953,7 @@ container-fluid px-3 px-xl-4
                 activeRequest.abort();
             }
 
-            activeRequest =
-                new AbortController();
+            activeRequest = new AbortController();
 
             searchStatus.textContent =
                 "Searching inventory...";
@@ -998,8 +970,7 @@ container-fluid px-3 px-xl-4
                             "X-Requested-With":
                                 "XMLHttpRequest"
                         },
-                        signal:
-                            activeRequest.signal
+                        signal: activeRequest.signal
                     }
                 );
 
@@ -1009,8 +980,7 @@ container-fluid px-3 px-xl-4
                     );
                 }
 
-                const data =
-                    await response.json();
+                const data = await response.json();
 
                 renderResults(
                     data.results,
@@ -1018,16 +988,12 @@ container-fluid px-3 px-xl-4
                 );
 
             } catch (error) {
-                if (
-                    error.name !== "AbortError"
-                ) {
-                    resultsContainer
-                        .replaceChildren();
+                if (error.name !== "AbortError") {
+                    resultsContainer.replaceChildren();
 
                     searchStatus.textContent =
-                        "Inventory search could "
-                        + "not be completed. "
-                        + "Please try again.";
+                        "Inventory search could not "
+                        + "be completed. Please try again.";
                 }
             }
         }
@@ -1036,9 +1002,7 @@ container-fluid px-3 px-xl-4
             searchInput.addEventListener(
                 "input",
                 () => {
-                    clearTimeout(
-                        searchTimer
-                    );
+                    clearTimeout(searchTimer);
 
                     searchTimer = setTimeout(
                         searchInventory,
@@ -1048,45 +1012,13 @@ container-fluid px-3 px-xl-4
             );
         }
 
-        document.querySelectorAll(
-            ".note-input"
-        ).forEach((input) => {
-            const printValue = input
-                .closest(".transfer-notes")
-                .querySelector(".note-print");
-
-            input.addEventListener(
-                "input",
-                () => {
-                    printValue.textContent =
-                        input.value;
-                }
-            );
-        });
-
         function resetPrintMode() {
             document.body.classList.remove(
                 "print-sheets",
                 "print-bundles"
             );
 
-            document.title =
-                originalDocumentTitle;
-
-            document.documentElement
-                .style.removeProperty(
-                    "--print-zoom"
-                );
-
-            document.documentElement
-                .style.removeProperty(
-                    "--print-font-size"
-                );
-
-            document.documentElement
-                .style.removeProperty(
-                    "--print-cell-padding"
-                );
+            document.title = originalDocumentTitle;
         }
 
         document.querySelectorAll(
@@ -1098,11 +1030,6 @@ container-fluid px-3 px-xl-4
                     const documentKey =
                         button.dataset.document;
 
-                    const rowCount = Number(
-                        button.dataset.rowCount
-                        || 0
-                    );
-
                     resetPrintMode();
 
                     document.body.classList.add(
@@ -1113,36 +1040,6 @@ container-fluid px-3 px-xl-4
                         documentKey === "sheets"
                             ? "26 Hymus Sheets"
                             : "26 Hymus Bundles";
-
-                    let zoom = 1;
-                    let fontSize = 8;
-                    let cellPadding = 2;
-
-                    if (rowCount > 24) {
-                        zoom =
-                            24 / rowCount;
-
-                        fontSize = 7;
-                        cellPadding = 1;
-                    }
-
-                    document.documentElement
-                        .style.setProperty(
-                            "--print-zoom",
-                            zoom
-                        );
-
-                    document.documentElement
-                        .style.setProperty(
-                            "--print-font-size",
-                            `${fontSize}pt`
-                        );
-
-                    document.documentElement
-                        .style.setProperty(
-                            "--print-cell-padding",
-                            `${cellPadding}px`
-                        );
 
                     window.print();
                 }
