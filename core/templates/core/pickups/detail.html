@@ -1,169 +1,216 @@
 {% extends "base.html" %}
+
 {% block content %}
-<style>
-    .img-container { position: relative; }
-    .img-thumbnail-custom {
-        height: 250px;
-        object-fit: cover;
-        cursor: pointer;
-        transition: transform 0.2s;
-    }
-    .img-thumbnail-custom:hover { transform: scale(1.02); }
-
-    .delete-photo-btn {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        z-index: 10;
-        background: rgba(255, 255, 255, 0.8);
-        border-radius: 50%;
-        padding: 5px 8px;
-        color: #dc3545;
-        border: none;
-        transition: all 0.2s;
-    }
-    .delete-photo-btn:hover { background: #dc3545; color: white; }
-
-    .modal-xl { max-width: 95vw; }
-    #photoModal { --modal-zoom-width: 100%; }
-    #photoModal .modal-body {
-        padding: 0; text-align: center; overflow: auto;
-        max-height: calc(100vh - 120px);
-    }
-    .full-res-img {
-        width: var(--modal-zoom-width);
-        max-width: none !important;
-        height: auto;
-        transition: width 0.1s ease-out;
-    }
-</style>
-
 {% if messages %}
-<div class="mb-3">
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    {% endfor %}
-</div>
+    <div class="mb-3">
+        {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}
+                        alert-dismissible fade show"
+                 role="alert">
+                {{ message }}
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert"
+                        aria-label="Close">
+                </button>
+            </div>
+        {% endfor %}
+    </div>
 {% endif %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-column flex-lg-row
+            justify-content-between align-items-lg-start
+            gap-3 mb-4">
     <div>
-        <a href="{% url 'pickup_photo_list' %}" class="text-decoration-none text-muted mb-2 d-inline-block">
-            <i class="bi bi-arrow-left"></i> Back to Pickup Folders
+        <a href="{% url 'pickup_photo_list' %}"
+           class="text-decoration-none text-muted
+                  mb-2 d-inline-block">
+            <i class="bi bi-arrow-left"></i>
+            Back to Pickup Folders
         </a>
-        <h2 class="fw-bold" style="color: #6610f2;"><i class="bi bi-person-badge me-2"></i>{{ log.customer_name }}</h2>
-        <p class="text-muted">Order: {{ log.order_number }} • Logged on {{ log.date_picked_up|date:"F j, Y" }}</p>
+
+        <h2 class="fw-bold mb-1 pickup-title">
+            <i class="bi bi-person-badge me-2"></i>
+            {{ log.customer_name }}
+        </h2>
+
+        <p class="text-muted mb-0">
+            {% if log.order_number %}
+                Order: {{ log.order_number }} &middot;
+            {% endif %}
+
+            Picked up {{ log.date_picked_up|date:"F j, Y" }}
+
+            {% if log.loaded_by %}
+                &middot; by {{ log.loaded_by }}
+            {% endif %}
+        </p>
     </div>
 
-    <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-primary shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editPickupLogModal">
-            <i class="bi bi-pencil-square me-1"></i>Edit Info
+    <div class="d-flex flex-wrap gap-2 detail-actions">
+        <button type="button"
+                class="btn btn-outline-primary shadow-sm fw-bold"
+                data-bs-toggle="modal"
+                data-bs-target="#editPickupLogModal">
+            <i class="bi bi-pencil-square me-1"></i>
+            Edit Info
         </button>
 
-        <form action="{% url 'delete_pickup_photo_log' log.pk %}" method="POST" onsubmit="return confirm('WARNING: Delete this folder and ALL photos?');">
+        <form action="{% url 'delete_pickup_photo_log' log.pk %}"
+              method="post"
+              onsubmit="return confirm('WARNING: Delete this folder and all photos?');">
             {% csrf_token %}
-            <button type="submit" class="btn btn-outline-danger shadow-sm">
-                <i class="bi bi-trash3-fill me-1"></i>Delete Folder
+
+            <button type="submit"
+                    class="btn btn-outline-danger shadow-sm">
+                <i class="bi bi-trash3-fill me-1"></i>
+                Delete Folder
             </button>
         </form>
 
-        <form action="{% url 'upload_more_pickup_photos' log.pk %}" method="post" enctype="multipart/form-data" id="quickUploadForm" class="d-inline">
+        <form action="{% url 'upload_more_pickup_photos' log.pk %}"
+              method="post"
+              enctype="multipart/form-data"
+              id="quickUploadForm"
+              class="d-inline">
             {% csrf_token %}
-            <input type="file" name="photos" id="fileInput" multiple accept="image/*" style="display: none;" onchange="document.getElementById('quickUploadForm').submit();">
-            <button type="button" class="btn text-white shadow-sm fw-bold" style="background-color: #6610f2;" onclick="document.getElementById('fileInput').click();">
-                <i class="bi bi-plus-lg me-1"></i>Add More Photos
+
+            <input type="file"
+                   name="photos"
+                   id="fileInput"
+                   multiple
+                   accept="image/*"
+                   class="visually-hidden"
+                   onchange="this.form.submit();">
+
+            <button type="button"
+                    class="btn text-white shadow-sm fw-bold
+                           pickup-button"
+                    onclick="document.getElementById('fileInput').click();">
+                <i class="bi bi-plus-lg me-1"></i>
+                Add More Photos
             </button>
         </form>
     </div>
 </div>
 
-<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
-    {% for photo in log.photos.all %}
-    <div class="col">
-        <div class="card shadow-sm border-0 img-container">
-            <form action="{% url 'delete_pickup_individual_photo' photo.pk %}" method="POST" onsubmit="return confirm('Delete this photo permanently?');">
-                {% csrf_token %}
-                <button type="submit" class="delete-photo-btn"><i class="bi bi-trash"></i></button>
-            </form>
+{% include "core/photos/photo_gallery.html" with photos=photos delete_url_name="delete_pickup_individual_photo" empty_label="pickup" %}
 
-            <img src="{{ photo.image.url }}" class="card-img-top img-thumbnail-custom" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="updateModal('{{ photo.image.url }}')">
-            <div class="card-footer bg-white border-0 text-center small text-muted">{{ photo.uploaded_at|time:"g:i A" }}</div>
-        </div>
-    </div>
-    {% empty %}
-    <div class="col-12 text-center text-muted py-5">
-        <i class="bi bi-camera-video-off display-4 d-block mb-3"></i>
-        <p>No photos found for this pickup.</p>
-    </div>
-    {% endfor %}
-</div>
-
-<div class="modal fade" id="editPickupLogModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade"
+     id="editPickupLogModal"
+     tabindex="-1"
+     aria-labelledby="editPickupTitle"
+     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
-            <form method="post" action="{% url 'edit_pickup_photo_log' log.pk %}">
+            <form method="post"
+                  action="{% url 'edit_pickup_photo_log' log.pk %}">
                 {% csrf_token %}
-                <div class="modal-header text-white" style="background-color: #6610f2;">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Edit Pickup Photo Info</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+
+                <div class="modal-header text-white pickup-background">
+                    <h2 class="modal-title h5 fw-bold"
+                        id="editPickupTitle">
+                        <i class="bi bi-pencil-square me-2"></i>
+                        Edit Pickup Photo Info
+                    </h2>
+
+                    <button type="button"
+                            class="btn-close btn-close-white"
+                            data-bs-dismiss="modal"
+                            aria-label="Close">
+                    </button>
                 </div>
+
                 <div class="modal-body p-4">
-                    <label class="form-label fw-bold">Customer Name</label>
-                    <input type="text" name="customer_name" class="form-control form-control-lg mb-3" value="{{ log.customer_name }}" required>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            Customer Name
+                        </label>
 
-                    <label class="form-label fw-bold">Order Number</label>
-                    <input type="text" name="order_number" class="form-control form-control-lg mb-3" value="{{ log.order_number }}" required>
+                        <input type="text"
+                               name="customer_name"
+                               class="form-control form-control-lg
+                                      text-uppercase"
+                               value="{{ log.customer_name }}"
+                               required>
+                    </div>
 
-                    <label class="form-label fw-bold">Date Picked Up</label>
-                    <input type="date" name="date_picked_up" class="form-control form-control-lg" value="{{ log.date_picked_up|date:'Y-m-d' }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            Order Number
+                            <span class="text-muted fw-normal">
+                                (optional)
+                            </span>
+                        </label>
+
+                        <input type="text"
+                               name="order_number"
+                               class="form-control form-control-lg
+                                      text-uppercase"
+                               value="{{ log.order_number }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            Loaded By
+                        </label>
+
+                        <input type="text"
+                               name="loaded_by"
+                               class="form-control form-control-lg"
+                               value="{{ log.loaded_by|default:'' }}"
+                               required>
+                    </div>
+
+                    <div>
+                        <label class="form-label fw-bold">
+                            Date Picked Up
+                        </label>
+
+                        <input type="date"
+                               name="date_picked_up"
+                               class="form-control form-control-lg"
+                               value="{{ log.date_picked_up|date:'Y-m-d' }}"
+                               required>
+                    </div>
                 </div>
+
                 <div class="modal-footer border-0 pb-4">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white fw-bold" style="background-color: #6610f2;">Save Changes</button>
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                            class="btn text-white fw-bold pickup-button">
+                        Save Changes
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content bg-dark border-0 shadow">
-            <div class="modal-header border-0 bg-dark py-2">
-                <div class="d-flex align-items-center gap-2 border-end pe-3">
-                    <i class="bi bi-zoom-out text-white-50"></i>
-                    <input type="range" class="form-range" id="modalZoomSlider" min="10" max="250" value="100" style="width: 250px; accent-color: #ffffff;">
-                    <i class="bi bi-zoom-in text-white-50"></i>
-                </div>
-                <span class="text-white ms-3 fw-bold" id="zoomValue">100%</span>
-                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-0 d-flex align-items-center justify-content-center" style="overflow: auto; min-height: 85vh; max-height: calc(100vh - 120px); background-color: #000;">
-                <img src="" id="modalImg" class="full-res-img">
-            </div>
-        </div>
-    </div>
-</div>
+<style>
+    .pickup-title {
+        color: #6610f2;
+    }
 
-<script>
-    const photoModal = document.getElementById('photoModal');
-    const modalImg = document.getElementById('modalImg');
-    const zoomSlider = document.getElementById('modalZoomSlider');
-    const zoomValueDisplay = document.getElementById('zoomValue');
+    .pickup-background,
+    .pickup-button {
+        background-color: #6610f2;
+    }
 
-    function updateModal(imageUrl) { if (modalImg) { modalImg.src = imageUrl; resetModalZoom(); } }
-    function resetModalZoom() { if (zoomSlider) { photoModal.style.setProperty('--modal-zoom-width', '100%'); zoomSlider.value = 100; zoomValueDisplay.textContent = '100%'; } }
+    @media (max-width: 767px) {
+        .detail-actions,
+        .detail-actions > * {
+            width: 100%;
+        }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        if (!zoomSlider) return;
-        zoomSlider.addEventListener('input', function() {
-            photoModal.style.setProperty('--modal-zoom-width', this.value + '%');
-            zoomValueDisplay.textContent = this.value + '%';
-        });
-        photoModal.addEventListener('hidden.bs.modal', resetModalZoom);
-    });
-</script>
+        .detail-actions .btn {
+            width: 100%;
+        }
+    }
+</style>
 {% endblock %}

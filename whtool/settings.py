@@ -16,7 +16,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
-    'core', # This links your 'core' folder logic
+    'core.apps.CoreConfig',
 ]
 
 MIDDLEWARE = [
@@ -60,7 +60,7 @@ DATABASES = {
 
 # 5. Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Toronto'
 USE_I18N = True
 USE_TZ = True
 

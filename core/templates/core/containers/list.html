@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">
+            {{ message }}
+        </div>
+    {% endfor %}
+{% endif %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="fw-bold"><i class="bi bi-box-seam me-2"></i>Inbound Containers</h2>
     <a href="{% url 'add_container' %}" class="btn btn-primary shadow-sm fw-bold">
@@ -15,8 +23,8 @@
                 <div class="card-body text-center py-5">
                     <i class="bi bi-truck display-4 text-primary mb-3"></i>
                     <h4 class="fw-bold text-dark">{{ c.container_number }}</h4>
-                    <p class="text-muted small mb-0">Received: {{ c.date_received|date:"M j, Y - g:i A" }}</p>
-                    <span class="badge bg-secondary mt-2">{{ c.photos.count }} Photos</span>
+                    <p class="text-muted small mb-0">Received: {{ c.date_received|date:"M j, Y" }}</p>
+                    <span class="badge bg-secondary mt-2">{{ c.photo_count }} Photos</span>
                     {% if c.unloaded_by %}
                         <p class="text-muted small mb-0">Unloaded by: {{ c.unloaded_by }}</p>
                     {% endif %}

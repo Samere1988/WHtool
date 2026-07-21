@@ -1,0 +1,374 @@
+<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+    {% for photo in photos %}
+        <div class="col">
+            <div class="card shadow-sm border-0 photo-card">
+                <form action="{% url delete_url_name photo.pk %}"
+                      method="post"
+                      onsubmit="return confirm('Delete this photo permanently?');">
+
+                    {% csrf_token %}
+
+                    <button type="submit"
+                            class="delete-photo-btn"
+                            aria-label="Delete photo {{ forloop.counter }}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+
+                <img src="{{ photo.image.url }}"
+                     class="card-img-top photo-thumbnail gallery-photo"
+                     data-photo-index="{{ forloop.counter0 }}"
+                     data-full-url="{{ photo.image.url }}"
+                     alt="{{ empty_label|capfirst }} photo {{ forloop.counter }}"
+                     loading="lazy"
+                     decoding="async"
+                     data-bs-toggle="modal"
+                     data-bs-target="#photoViewerModal">
+
+                <div class="card-footer bg-white border-0
+                            text-center small text-muted">
+                    {{ photo.uploaded_at|time:"g:i A" }}
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12 text-center text-muted py-5">
+            <i class="bi bi-camera-video-off
+                      display-4 d-block mb-3"></i>
+            <p>No photos found for this {{ empty_label }}.</p>
+        </div>
+    {% endfor %}
+</div>
+
+<div class="modal fade"
+     id="photoViewerModal"
+     tabindex="-1"
+     aria-labelledby="photoViewerTitle"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark border-0 shadow">
+            <div class="modal-header border-0 bg-dark py-2">
+                <div class="d-flex align-items-center gap-2
+                            border-end pe-3 viewer-zoom-controls">
+                    <i class="bi bi-zoom-out text-white-50"></i>
+
+                    <input type="range"
+                           class="form-range"
+                           id="photoViewerZoom"
+                           min="10"
+                           max="250"
+                           value="100"
+                           aria-label="Photo zoom">
+
+                    <i class="bi bi-zoom-in text-white-50"></i>
+                </div>
+
+                <span class="text-white ms-3 fw-bold"
+                      id="photoViewerZoomValue">
+                    100%
+                </span>
+
+                <span class="text-white-50 ms-3 small"
+                      id="photoViewerPosition">
+                </span>
+
+                <h2 class="visually-hidden"
+                    id="photoViewerTitle">
+                    Photo viewer
+                </h2>
+
+                <button type="button"
+                        class="btn-close btn-close-white ms-auto"
+                        data-bs-dismiss="modal"
+                        aria-label="Close">
+                </button>
+            </div>
+
+            <div class="modal-body photo-viewer-body">
+                <button type="button"
+                        class="viewer-arrow viewer-arrow-previous"
+                        id="previousPhotoButton"
+                        aria-label="Previous photo">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+
+                <div class="photo-viewer-canvas">
+                    <img src=""
+                         id="photoViewerImage"
+                         class="photo-viewer-image"
+                         alt="Selected full-size photo">
+                </div>
+
+                <button type="button"
+                        class="viewer-arrow viewer-arrow-next"
+                        id="nextPhotoButton"
+                        aria-label="Next photo">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .photo-card {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .photo-thumbnail {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+    .photo-thumbnail:hover {
+        transform: scale(1.02);
+    }
+
+    .delete-photo-btn {
+        position: absolute;
+        top: 0.45rem;
+        right: 0.45rem;
+        z-index: 10;
+        width: 38px;
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        color: #dc3545;
+        background: rgba(255, 255, 255, 0.92);
+        border: 0;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .delete-photo-btn:hover {
+        color: white;
+        background: #dc3545;
+    }
+
+    #photoViewerModal .modal-dialog {
+        max-width: 95vw;
+    }
+
+    .viewer-zoom-controls input {
+        width: 240px;
+        accent-color: white;
+    }
+
+    .photo-viewer-body {
+        position: relative;
+        height: calc(100vh - 110px);
+        min-height: 420px;
+        padding: 0;
+        overflow: hidden;
+        background: #000;
+    }
+
+    .photo-viewer-canvas {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: auto;
+    }
+
+    .photo-viewer-image {
+        width: var(--photo-viewer-width, 100%);
+        max-width: none;
+        height: auto;
+        flex-shrink: 0;
+        transition: width 0.1s ease-out;
+    }
+
+    .viewer-arrow {
+        position: absolute;
+        top: 50%;
+        z-index: 20;
+        width: 58px;
+        height: 78px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        background: rgba(0, 0, 0, 0.58);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 12px;
+        font-size: 2rem;
+        transform: translateY(-50%);
+    }
+
+    .viewer-arrow:hover {
+        background: rgba(13, 110, 253, 0.9);
+    }
+
+    .viewer-arrow-previous {
+        left: 1rem;
+    }
+
+    .viewer-arrow-next {
+        right: 1rem;
+    }
+
+    .viewer-arrow:disabled {
+        display: none;
+    }
+
+    @media (max-width: 767px) {
+        .photo-thumbnail {
+            height: 180px;
+        }
+
+        .viewer-zoom-controls {
+            display: none !important;
+        }
+
+        #photoViewerZoomValue {
+            display: none;
+        }
+
+        .viewer-arrow {
+            width: 46px;
+            height: 62px;
+            font-size: 1.5rem;
+        }
+
+        .viewer-arrow-previous {
+            left: 0.35rem;
+        }
+
+        .viewer-arrow-next {
+            right: 0.35rem;
+        }
+    }
+</style>
+
+<script>
+    (() => {
+        const thumbnails = Array.from(
+            document.querySelectorAll(".gallery-photo")
+        );
+
+        const modal = document.getElementById(
+            "photoViewerModal"
+        );
+
+        const viewerImage = document.getElementById(
+            "photoViewerImage"
+        );
+
+        const previousButton = document.getElementById(
+            "previousPhotoButton"
+        );
+
+        const nextButton = document.getElementById(
+            "nextPhotoButton"
+        );
+
+        const zoomSlider = document.getElementById(
+            "photoViewerZoom"
+        );
+
+        const zoomValue = document.getElementById(
+            "photoViewerZoomValue"
+        );
+
+        const positionLabel = document.getElementById(
+            "photoViewerPosition"
+        );
+
+        let currentIndex = 0;
+
+        function resetZoom() {
+            modal.style.setProperty(
+                "--photo-viewer-width",
+                "100%"
+            );
+
+            zoomSlider.value = 100;
+            zoomValue.textContent = "100%";
+        }
+
+        function showPhoto(index) {
+            if (!thumbnails.length) {
+                return;
+            }
+
+            currentIndex = (
+                index + thumbnails.length
+            ) % thumbnails.length;
+
+            viewerImage.src = thumbnails[
+                currentIndex
+            ].dataset.fullUrl;
+
+            viewerImage.alt = (
+                `Photo ${currentIndex + 1} `
+                + `of ${thumbnails.length}`
+            );
+
+            positionLabel.textContent = (
+                `${currentIndex + 1} / ${thumbnails.length}`
+            );
+
+            const hasMultiple = thumbnails.length > 1;
+            previousButton.disabled = !hasMultiple;
+            nextButton.disabled = !hasMultiple;
+
+            resetZoom();
+        }
+
+        thumbnails.forEach((thumbnail, index) => {
+            thumbnail.addEventListener("click", () => {
+                showPhoto(index);
+            });
+        });
+
+        previousButton.addEventListener("click", () => {
+            showPhoto(currentIndex - 1);
+        });
+
+        nextButton.addEventListener("click", () => {
+            showPhoto(currentIndex + 1);
+        });
+
+        zoomSlider.addEventListener("input", () => {
+            modal.style.setProperty(
+                "--photo-viewer-width",
+                `${zoomSlider.value}%`
+            );
+
+            zoomValue.textContent = (
+                `${zoomSlider.value}%`
+            );
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (!modal.classList.contains("show")) {
+                return;
+            }
+
+            if (event.key === "ArrowLeft") {
+                showPhoto(currentIndex - 1);
+            }
+
+            if (event.key === "ArrowRight") {
+                showPhoto(currentIndex + 1);
+            }
+        });
+
+        modal.addEventListener(
+            "hidden.bs.modal",
+            () => {
+                viewerImage.src = "";
+                resetZoom();
+            }
+        );
+    })();
+</script>

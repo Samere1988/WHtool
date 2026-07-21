@@ -328,8 +328,14 @@ class PickupLog(models.Model):
 
 class PickupPhotoLog(models.Model):
     customer_name = models.CharField(max_length=255)
-    order_number = models.CharField(max_length=100)
-    date_picked_up = models.DateField(default=timezone.now)
+    order_number = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+    )
+    date_picked_up = models.DateField(
+        default=timezone.localdate,
+    )
     loaded_by = models.CharField(max_length=100, blank=True, null=True)
 
 

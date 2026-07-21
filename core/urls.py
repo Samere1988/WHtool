@@ -3,7 +3,7 @@ from . import views
 from . import transport_import_views
 from . import transport_export_views
 from . import transport_commit_views
-from . import photo_edit_views
+from . import photo_views
 from . import report_views
 
 urlpatterns = [
@@ -90,31 +90,31 @@ urlpatterns = [
     path('pickups/delete/<int:pk>/', views.delete_pickup_order, name='delete_pickup_order'),
 
     # --- OUTBOUND PHOTOS ---
-    path('outbound/', views.outbound_list, name='outbound_list'),
-    path('outbound/add/', views.add_outbound_photos, name='add_outbound_photos'),
-    path('outbound/<int:pk>/', views.outbound_detail, name='outbound_detail'),
-    path('outbound/<int:pk>/edit/', photo_edit_views.edit_outbound_load, name='edit_outbound_load'),
-    path('outbound/quick-add/<int:pk>/', views.upload_more_outbound_photos, name='upload_more_outbound_photos'),
-    path('outbound/delete/<int:pk>/', views.delete_outbound_load, name='delete_outbound_load'),
-    path('outbound/photo/delete/<int:photo_id>/', views.delete_outbound_photo, name='delete_outbound_photo'),
+    path('outbound/', photo_views.outbound_list, name='outbound_list'),
+    path('outbound/add/', photo_views.add_outbound_photos, name='add_outbound_photos'),
+    path('outbound/<int:pk>/', photo_views.outbound_detail, name='outbound_detail'),
+    path('outbound/<int:pk>/edit/', photo_views.edit_outbound_load, name='edit_outbound_load'),
+    path('outbound/quick-add/<int:pk>/', photo_views.upload_more_outbound_photos, name='upload_more_outbound_photos'),
+    path('outbound/delete/<int:pk>/', photo_views.delete_outbound_load, name='delete_outbound_load'),
+    path('outbound/photo/delete/<int:photo_id>/', photo_views.delete_outbound_photo, name='delete_outbound_photo'),
 
     # --- CONTAINER PHOTOS ---
-    path('containers/', views.container_list, name='container_list'),
-    path('containers/add/', views.add_container, name='add_container'),
-    path('containers/<int:pk>/', views.container_detail, name='container_detail'),
-    path('containers/<int:pk>/edit/', photo_edit_views.edit_container, name='edit_container_photo_folder'),
-    path('container/quick-add/<int:pk>/', views.upload_more_container_photos, name='upload_more_container_photos'),
-    path('containers/delete/<int:pk>/', views.delete_container, name='delete_container'),
-    path('containers/photo/delete/<int:photo_id>/', views.delete_container_photo, name='delete_container_photo'),
+    path('containers/', photo_views.container_list, name='container_list'),
+    path('containers/add/', photo_views.add_container, name='add_container'),
+    path('containers/<int:pk>/', photo_views.container_detail, name='container_detail'),
+    path('containers/<int:pk>/edit/', photo_views.edit_container, name='edit_container_photo_folder'),
+    path('container/quick-add/<int:pk>/', photo_views.upload_more_container_photos, name='upload_more_container_photos'),
+    path('containers/delete/<int:pk>/', photo_views.delete_container, name='delete_container'),
+    path('containers/photo/delete/<int:photo_id>/', photo_views.delete_container_photo, name='delete_container_photo'),
 
     # --- PICKUP PHOTOS ---
-    path('pickup-photos/', views.pickup_photo_list, name='pickup_photo_list'),
-    path('pickup-photos/add/', views.add_pickup_photos, name='add_pickup_photos'),
-    path('pickup-photos/<int:pk>/', views.pickup_photo_detail, name='pickup_photo_detail'),
-    path('pickup-photos/<int:pk>/edit/', photo_edit_views.edit_pickup_photo_log, name='edit_pickup_photo_log'),
-    path('pickup-photos/quick-add/<int:pk>/', views.upload_more_pickup_photos, name='upload_more_pickup_photos'),
-    path('pickup-photos/delete-log/<int:pk>/', views.delete_pickup_photo_log, name='delete_pickup_photo_log'),
-    path('pickup-photos/delete-photo/<int:photo_id>/', views.delete_pickup_individual_photo, name='delete_pickup_individual_photo'),
+    path('pickup-photos/', photo_views.pickup_photo_list, name='pickup_photo_list'),
+    path('pickup-photos/add/', photo_views.add_pickup_photos, name='add_pickup_photos'),
+    path('pickup-photos/<int:pk>/', photo_views.pickup_photo_detail, name='pickup_photo_detail'),
+    path('pickup-photos/<int:pk>/edit/', photo_views.edit_pickup_photo_log, name='edit_pickup_photo_log'),
+    path('pickup-photos/quick-add/<int:pk>/', photo_views.upload_more_pickup_photos, name='upload_more_pickup_photos'),
+    path('pickup-photos/delete-log/<int:pk>/', photo_views.delete_pickup_photo_log, name='delete_pickup_photo_log'),
+    path('pickup-photos/delete-photo/<int:photo_id>/', photo_views.delete_pickup_individual_photo, name='delete_pickup_individual_photo'),
 
 
     # --- BOL ---
