@@ -1960,3 +1960,27 @@ def cycle_count_stats(request):
             ),
         },
     )
+
+@login_required
+@require_POST
+def delete_cycle_count(request, count_id):
+    cycle_count = get_object_or_404(
+        CycleCount,
+        pk=count_id,
+    )
+
+    if cycle_count.completed_at:
+        messages.error(
+            request,
+            "Completed cycle counts cannot be deleted.",
+        )
+        return redirect("cycle_counts")
+
+    rack = cycle_count.rack
+    cycle_count.delete()
+
+    messages.success(
+        request,
+        f"Open cycle count for rack {rack} was deleted.",
+    )
+    return redirect("cycle_counts")
