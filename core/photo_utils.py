@@ -1,6 +1,11 @@
 import warnings
+from io import BytesIO
+from pathlib import Path
 
-from PIL import Image, UnidentifiedImageError
+from django.core.files.base import ContentFile
+from PIL import Image, ImageOps, UnidentifiedImageError
+from pillow_heif import register_heif_opener
+
 
 
 MAX_PHOTOS_PER_UPLOAD = 25
@@ -95,6 +100,66 @@ def validate_photo_uploads(uploads):
     return uploads
 
 
+def prepare_photo_for_storage(upload):
+    """Convert HEIC/HEIF uploads to browser-compatible JPEG files."""
+    try:
+        upload.seek(0)
+
+        with Image.open(upload) as image:
+            image_format = (
+                image.format or ""
+            ).upper()
+
+            if image_format not in HEIF_IMAGE_FORMATS:
+                return upload
+
+            image = ImageOps.exif_transpose(image)
+
+            if image.mode in {"RGBA", "LA"}:
+                image_with_alpha = image.convert("RGBA")
+                jpeg_image = Image.new(
+                    "RGB",
+                    image_with_alpha.size,
+                    "white",
+                )
+                jpeg_image.paste(
+                    image_with_alpha,
+                    mask=image_with_alpha.getchannel("A"),
+                )
+            else:
+                jpeg_image = image.convert("RGB")
+
+            output = BytesIO()
+            jpeg_image.save(
+                output,
+                format="JPEG",
+                quality=92,
+                optimize=True,
+            )
+
+        output.seek(0)
+
+        return ContentFile(
+            output.getvalue(),
+            name=f"{Path(upload.name).stem}.jpg",
+        )
+
+    except (
+        UnidentifiedImageError,
+        OSError,
+        ValueError,
+        Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
+    ) as exc:
+        raise PhotoUploadError(
+            f"{upload.name} could not be converted "
+            "to a browser-compatible photo."
+        ) from exc
+
+    finally:
+        upload.seek(0)
+
+
 def create_photo_records(
     photo_model,
     parent_field,
@@ -105,10 +170,12 @@ def create_photo_records(
 
     try:
         for upload in uploads:
+            stored_upload = prepare_photo_for_storage(upload)
+
             photo = photo_model(
                 **{
                     parent_field: parent,
-                    "image": upload,
+                    "image": stored_upload,
                 }
             )
 
