@@ -1383,7 +1383,11 @@ def edit_order(request, pk):
     if request.method == "POST":
         posted_shipping_date = get_selected_shipping_date(request)
         order_num = request.POST.get('order_number', '').strip()
-        if order_num and not order_num.upper().startswith('W') and not order_num.upper().startswith('K'):
+        if (
+            order_num
+            and not run_item.is_pickup
+            and not order_num.upper().startswith(('W', 'K'))
+        ):
             order_num = f"W{order_num}"
 
         closing_time = request.POST.get('closing_time', '').strip()
