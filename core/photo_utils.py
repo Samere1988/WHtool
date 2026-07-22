@@ -19,6 +19,10 @@ ALLOWED_IMAGE_FORMATS = {
     "HEIC",
     "HEIF",
 }
+HEIF_IMAGE_FORMATS = {
+    "HEIC",
+    "HEIF",
+}
 
 Image.MAX_IMAGE_PIXELS = 60_000_000
 
