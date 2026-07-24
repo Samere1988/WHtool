@@ -18,10 +18,13 @@ ALLOWED_IMAGE_FORMATS = {
     "WEBP",
     "HEIC",
     "HEIF",
+    "MPO",
 }
+
 HEIF_IMAGE_FORMATS = {
     "HEIC",
     "HEIF",
+    "MPO",
 }
 
 Image.MAX_IMAGE_PIXELS = 60_000_000
@@ -80,8 +83,8 @@ def validate_photo_uploads(uploads):
 
             if image_format not in ALLOWED_IMAGE_FORMATS:
                 raise PhotoUploadError(
-                    f"{upload.name} is not a supported "
-                    "JPEG, PNG, WebP, HEIC, or HEIF photo."
+                    f"{upload.name} is not a supported photo "
+                    f"(detected format: {image_format or 'unknown'})."
                 )
 
         except PhotoUploadError:
